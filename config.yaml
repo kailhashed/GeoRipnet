@@ -1,0 +1,68 @@
+# Configuration file for Geopolitical Energy Price Forecasting
+
+# Data Sources
+data_sources:
+  yahoo_finance:
+    symbols: ["CL=F", "NG=F", "CO1=F", "EL=F"]  # Crude Oil, Natural Gas, Coal, Electricity
+    period: "5y"  # 5 years of historical data
+  
+  gdelt:
+    api_url: "https://api.gdeltproject.org/api/v2/doc/doc"
+    max_records: 1000
+  
+  newsapi:
+    keywords: ["energy", "oil", "gas", "coal", "electricity", "geopolitical", "sanctions", "trade"]
+    language: "en"
+    sort_by: "publishedAt"
+  
+  policy_uncertainty:
+    gpr_url: "https://www.policyuncertainty.com/media/GPR_Data_Excel.xlsx"
+    epu_url: "https://www.policyuncertainty.com/media/EPU_Data_Excel.xlsx"
+
+# Model Parameters
+model:
+  sequence_length: 30  # 30-day lookback window
+  forecast_horizon: 1   # 1-day ahead forecast
+  forecast_horizons: [1, 3, 7, 14, 30]  # Multiple forecast horizons
+  temporal_input_size: 20  # Number of temporal features
+  contextual_input_size: 10  # Number of contextual features
+  hidden_size: 128
+  num_layers: 2
+  dropout: 0.3
+  attention_heads: 8
+  learning_rate: 0.001
+  batch_size: 32
+  epochs: 100
+  early_stopping_patience: 10
+
+# Feature Engineering
+features:
+  technical_indicators:
+    - "rsi"
+    - "macd"
+    - "bollinger_bands"
+    - "volatility"
+    - "volume_ratio"
+  
+  ripple_effect:
+    trade_weight_threshold: 0.01  # Minimum trade weight to consider
+    tone_threshold: -2.0  # Minimum tone score for negative events
+    goldstein_threshold: 0.5  # Minimum Goldstein scale for significant events
+
+# Training
+training:
+  test_size: 0.2
+  validation_size: 0.2
+  random_state: 42
+  shuffle: true
+
+# Evaluation
+evaluation:
+  metrics:
+    - "accuracy"
+    - "precision_macro"
+    - "recall_macro"
+    - "f1_macro"
+    - "roc_auc"
+  plot_attention: true
+  save_predictions: true

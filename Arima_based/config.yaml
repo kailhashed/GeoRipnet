@@ -1,0 +1,146 @@
+# RippleNet-TFT Configuration
+# ARIMA + GNN + Temporal Fusion Transformer for Energy Commodity Price Forecasting
+
+# Data Configuration
+data:
+  # Data sources
+  yahoo_symbols:
+    - "CL=F"  # Crude Oil
+    - "NG=F"  # Natural Gas
+    - "MTF=F" # Coal
+    - "NG=F"  # Electricity (using Natural Gas as proxy)
+  
+  # API Keys (set in .env file)
+  news_api_key: "YOUR_NEWS_API_KEY"
+  eia_api_key: "YOUR_EIA_API_KEY"
+  
+  # Data paths
+  raw_data_path: "data/raw"
+  processed_data_path: "data/processed"
+  merged_data_path: "data/merged.csv"
+  
+  # GDELT and UN Comtrade paths
+  gdelt_path: "data/gdelt"
+  comtrade_path: "data/comtrade"
+  
+  # Date ranges
+  start_date: "2020-01-01"
+  end_date: "2024-12-31"
+  
+  # Data frequency
+  frequency: "daily"
+
+# Model Configuration
+model:
+  # ARIMA Configuration
+  arima:
+    max_p: 5
+    max_d: 2
+    max_q: 5
+    seasonal: true
+    max_P: 2
+    max_D: 1
+    max_Q: 2
+    m: 7  # weekly seasonality
+  
+  # Ripple Graph Configuration
+  ripple_graph:
+    embedding_dim: 64
+    num_layers: 3
+    dropout: 0.1
+    use_attention: true
+    propagation_method: "gnn"  # or "diffusion"
+  
+  # News Encoder Configuration
+  news_encoder:
+    model_name: "yiyanghkust/finbert-tone"
+    max_length: 512
+    batch_size: 32
+    embedding_dim: 768
+    attention_pooling: true
+  
+  # TFT Configuration
+  tft:
+    hidden_size: 64
+    lstm_layers: 2
+    attention_head_size: 4
+    dropout: 0.1
+    use_quantile_output: false
+    quantiles: [0.1, 0.5, 0.9]
+  
+  # Regression Head
+  regression_head:
+    hidden_layers: [128, 64]
+    dropout: 0.2
+    activation: "relu"
+
+# Training Configuration
+training:
+  # Multi-GPU Configuration
+  device: "cuda"
+  gpu_ids: [0, 1, 2, 3]  # Adjust based on available GPUs
+  use_ddp: true
+  use_mixed_precision: true
+  
+  # Training Parameters
+  batch_size: 128
+  learning_rate: 1e-4
+  weight_decay: 1e-5
+  epochs: 100
+  early_stopping_patience: 10
+  
+  # Optimizer
+  optimizer: "AdamW"
+  scheduler: "OneCycleLR"
+  max_lr: 1e-3
+  
+  # Data Configuration
+  lookback_window: 60  # days
+  forecast_horizon: 1  # days
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  
+  # Validation
+  validation_frequency: 1
+  save_frequency: 5
+  
+  # Reproducibility
+  seed: 42
+  deterministic: true
+
+# Evaluation Configuration
+evaluation:
+  metrics:
+    - "rmse"
+    - "mae"
+    - "mape"
+    - "r2"
+    - "pearson"
+    - "directional_accuracy"
+  
+  # Backtesting
+  backtest:
+    initial_capital: 100000
+    transaction_cost: 0.001
+    trading_rule: "momentum"  # or "mean_reversion"
+  
+  # Visualization
+  plot_attention: true
+  plot_predictions: true
+  plot_ripple_effects: true
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  log_frequency: 10
+  wandb_project: "ripplenet-tft"
+  wandb_entity: "your_entity"
+
+# Paths
+paths:
+  model_checkpoints: "checkpoints"
+  results: "results"
+  logs: "logs"
+  data: "data"
