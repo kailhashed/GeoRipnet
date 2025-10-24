@@ -293,6 +293,10 @@ class RippleNetDataModule:
         )
         
         return train_loader, val_loader, test_loader
+    
+    def get_scalers(self):
+        """Get fitted scalers"""
+        return self.get_train_dataset().get_scalers()
 
 def create_dataset_from_merged_data(merged_data_path: str, config: Dict) -> RippleNetDataModule:
     """Create dataset from merged data file"""

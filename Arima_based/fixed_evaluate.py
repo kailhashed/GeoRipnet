@@ -37,7 +37,7 @@ def load_model_and_data():
     model.eval()
     
     # Get scalers
-    scalers = data_module.train_dataset.get_scalers()
+    scalers = data_module.get_scalers()
     
     return model, test_loader, scalers, data_module
 
