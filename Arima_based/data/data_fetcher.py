@@ -156,143 +156,67 @@ class DataFetcher:
         return data
     
     def fetch_news_data(self, start_date: str, end_date: str, keywords: List[str] = None) -> pd.DataFrame:
-        """Fetch news headlines from NewsAPI"""
-        logger.info("Fetching news data")
+        """Load real news data from existing files"""
+        logger.info("Loading real news data from data/raw/news_headlines.csv")
         
-        if not self.news_api_key:
-            logger.warning("No News API key provided, skipping news data")
-            return pd.DataFrame()
-        
-        if keywords is None:
-            keywords = ['oil', 'gas', 'energy', 'crude', 'natural gas', 'coal', 'electricity', 'OPEC', 'sanctions']
-        
-        all_articles = []
-        base_url = "https://newsapi.org/v2/everything"
-        
-        # Split date range into chunks to avoid API limits
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-        chunk_days = 30  # Process 30 days at a time
-        
-        current_date = start_dt
-        while current_date < end_dt:
-            chunk_end = min(current_date + timedelta(days=chunk_days), end_dt)
+        # Load real news data
+        news_file = Path(self.config['data']['raw_data_path']) / 'news_headlines.csv'
+        if news_file.exists():
+            df = pd.read_csv(news_file)
+            df['date'] = pd.to_datetime(df['date'])
+            df = df.set_index('date')
             
-            for keyword in keywords:
-                try:
-                    params = {
-                        'apiKey': self.news_api_key,
-                        'q': keyword,
-                        'from': current_date.strftime('%Y-%m-%d'),
-                        'to': chunk_end.strftime('%Y-%m-%d'),
-                        'language': 'en',
-                        'sortBy': 'publishedAt',
-                        'pageSize': 100
-                    }
-                    
-                    response = requests.get(base_url, params=params)
-                    response.raise_for_status()
-                    
-                    data = response.json()
-                    if 'articles' in data:
-                        for article in data['articles']:
-                            if article['title'] and article['description']:
-                                all_articles.append({
-                                    'date': pd.to_datetime(article['publishedAt']).date(),
-                                    'title': article['title'],
-                                    'description': article['description'],
-                                    'source': article['source']['name'],
-                                    'url': article['url'],
-                                    'keyword': keyword
-                                })
-                    
-                    time.sleep(self.request_delay)
-                    
-                except Exception as e:
-                    logger.error(f"Error fetching news for keyword {keyword}: {e}")
-                    continue
+            # Filter by date range
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            df = df[(df.index.date >= start_dt.date()) & (df.index.date <= end_dt.date())]
             
-            current_date = chunk_end
-        
-        if all_articles:
-            df = pd.DataFrame(all_articles)
-            df = df.groupby('date').agg({
+            # Group by date and aggregate
+            df_aggregated = df.groupby(df.index.date).agg({
                 'title': lambda x: ' | '.join(x),
                 'description': lambda x: ' | '.join(x),
                 'source': lambda x: ', '.join(x.unique()),
                 'url': lambda x: ', '.join(x),
                 'keyword': lambda x: ', '.join(x.unique())
             }).reset_index()
+            df_aggregated.columns = ['date', 'title', 'description', 'source', 'url', 'keyword']
             
-            logger.info(f"Fetched {len(df)} days of news data")
-            return df
+            logger.info(f"Loaded {len(df_aggregated)} days of real news data")
+            return df_aggregated
         else:
-            logger.warning("No news articles found")
+            logger.warning("Real news data not found, returning empty DataFrame")
             return pd.DataFrame()
     
     def fetch_gdelt_data(self, start_date: str, end_date: str) -> pd.DataFrame:
-        """Fetch GDELT event data"""
-        logger.info("Fetching GDELT data")
+        """Load real GDELT event data from existing files"""
+        logger.info("Loading real GDELT data from data/raw/gdelt_events.csv")
         
-        gdelt_dir = Path(self.config['data']['gdelt_path'])
-        gdelt_dir.mkdir(parents=True, exist_ok=True)
-        
-        # GDELT URL format
-        base_url = "https://api.gdeltproject.org/api/v2/doc/doc"
-        
-        # Energy-related keywords for filtering
-        energy_keywords = [
-            'oil', 'gas', 'energy', 'crude', 'petroleum', 'OPEC', 'sanctions',
-            'embargo', 'pipeline', 'refinery', 'drilling', 'fracking'
-        ]
-        
-        all_events = []
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-        
-        current_date = start_dt
-        while current_date < end_dt:
-            date_str = current_date.strftime('%Y%m%d')
+        # Load real GDELT data
+        gdelt_file = Path(self.config['data']['raw_data_path']) / 'gdelt_events.csv'
+        if gdelt_file.exists():
+            df = pd.read_csv(gdelt_file)
+            df['date'] = pd.to_datetime(df['date'])
+            df = df.set_index('date')
             
-            try:
-                # Try to fetch events for this date
-                url = f"{base_url}?query=({'+'.join(energy_keywords)})&startdatetime={date_str}&enddatetime={date_str}&format=json"
-                
-                response = requests.get(url, timeout=30)
-                if response.status_code == 200:
-                    data = response.json()
-                    if 'articles' in data:
-                        for article in data['articles']:
-                            all_events.append({
-                                'date': current_date.date(),
-                                'title': article.get('title', ''),
-                                'url': article.get('url', ''),
-                                'source': article.get('source', ''),
-                                'tone': article.get('tone', 0),
-                                'goldstein_scale': article.get('goldstein', 0)
-                            })
-                
-                time.sleep(self.request_delay)
-                current_date += timedelta(days=1)
-                
-            except Exception as e:
-                logger.error(f"Error fetching GDELT data for {date_str}: {e}")
-                current_date += timedelta(days=1)
-                continue
-        
-        if all_events:
-            df = pd.DataFrame(all_events)
-            df = df.groupby('date').agg({
+            # Filter by date range
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            df = df[(df.index.date >= start_dt.date()) & (df.index.date <= end_dt.date())]
+            
+            # Group by date and aggregate
+            df_aggregated = df.groupby(df.index.date).agg({
                 'title': lambda x: ' | '.join(x),
                 'tone': 'mean',
                 'goldstein_scale': 'mean',
-                'source': lambda x: ', '.join(x.unique())
+                'country': lambda x: ', '.join(x.unique()),
+                'event_type': lambda x: ', '.join(x.unique())
             }).reset_index()
+            df_aggregated.columns = ['date', 'title', 'tone', 'goldstein_scale', 'country', 'event_type']
             
-            logger.info(f"Fetched {len(df)} days of GDELT data")
-            return df
+            logger.info(f"Loaded {len(df_aggregated)} days of real GDELT event data")
+            return df_aggregated
         else:
-            logger.warning("No GDELT events found")
+            logger.warning("Real GDELT data not found, returning empty DataFrame")
             return pd.DataFrame()
     
     def download_comtrade_data(self) -> pd.DataFrame:

@@ -184,8 +184,7 @@ class RippleNetDataset(Dataset):
                 'past_target': torch.FloatTensor(past_target),
                 'observed_covariates': torch.FloatTensor(observed_cov),
                 'known_future': torch.FloatTensor(known_future),
-                'target': torch.FloatTensor(target),
-                'date': sequence_data.iloc[-1]['date'] if 'date' in sequence_data.columns else i
+                'target': torch.FloatTensor(target)
             })
         
         return sequences

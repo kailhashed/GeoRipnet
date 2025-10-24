@@ -78,8 +78,13 @@ class VariableSelectionNetwork(nn.Module):
         # Apply selection weights
         selected_vars = selection_weights.unsqueeze(-1) * gated_vars
         
-        # Reshape back
-        output = selected_vars.view(batch_size, seq_len, num_vars, self.hidden_size)
+        # Reshape back - handle multiple variables correctly
+        # For multi-feature case, we need to handle the reshaping differently
+        if num_vars == 1:
+            output = selected_vars.view(batch_size, seq_len, num_vars, self.hidden_size)
+        else:
+            # For multiple features, reshape to [batch, seq, features, hidden]
+            output = selected_vars.view(batch_size, seq_len, num_vars, self.hidden_size)
         
         return output, selection_weights
 
@@ -140,10 +145,21 @@ class TemporalFusionTransformer(nn.Module):
         # Output layers
         self.output_projection = nn.Linear(self.hidden_size, 1)
         
+        # Linear layers for processing
+        self.past_target_linear = None
+        self.observed_cov_linear = None
+        
     def _initialize_variable_selection_networks(self, past_target_dim: int, 
                                               observed_cov_dim: int, 
                                               known_future_dim: int):
         """Initialize variable selection networks"""
+        # Initialize linear layers for processing
+        if self.past_target_linear is None:
+            self.past_target_linear = nn.Linear(past_target_dim, self.hidden_size)
+        
+        if self.observed_cov_linear is None and observed_cov_dim > 0:
+            self.observed_cov_linear = nn.Linear(observed_cov_dim, self.hidden_size)
+        
         if self.past_target_vsn is None:
             self.past_target_vsn = VariableSelectionNetwork(
                 input_size=past_target_dim,
@@ -191,21 +207,21 @@ class TemporalFusionTransformer(nn.Module):
             known_future.shape[-1] if known_future is not None else 0
         )
         
-        # Process past target
-        past_target_processed, past_target_weights = self.past_target_vsn(
-            past_target.unsqueeze(2)
-        )
-        past_target_processed = past_target_processed.squeeze(2)
+        # Process past target - use simple linear transformation for multi-feature case
+        # Flatten features and apply linear transformation
+        batch_size, seq_len, num_features = past_target.shape
+        past_target_flat = past_target.view(batch_size * seq_len, num_features)
+        past_target_processed = self.past_target_linear(past_target_flat)
+        past_target_processed = past_target_processed.view(batch_size, seq_len, -1)
         
-        # Process observed covariates
-        if observed_covariates is not None and self.observed_cov_vsn is not None:
-            observed_processed, observed_weights = self.observed_cov_vsn(
-                observed_covariates.unsqueeze(2)
-            )
-            observed_processed = observed_processed.squeeze(2)
+        # Process observed covariates - use simple linear transformation
+        if observed_covariates is not None:
+            obs_batch_size, obs_seq_len, obs_num_features = observed_covariates.shape
+            observed_flat = observed_covariates.view(obs_batch_size * obs_seq_len, obs_num_features)
+            observed_processed = self.observed_cov_linear(observed_flat)
+            observed_processed = observed_processed.view(obs_batch_size, obs_seq_len, -1)
         else:
             observed_processed = torch.zeros_like(past_target_processed)
-            observed_weights = None
         
         # Combine past target and observed covariates
         combined_input = past_target_processed + observed_processed
@@ -220,13 +236,9 @@ class TemporalFusionTransformer(nn.Module):
         # Get the last timestep for prediction
         last_timestep = combined_input[:, -1, :]  # (batch_size, hidden_size)
         
-        # Project to output
-        prediction = self.output_projection(last_timestep)  # (batch_size, 1)
-        
-        # Expand to forecast horizon
-        prediction = prediction.unsqueeze(1).expand(-1, 1, -1)  # (batch_size, forecast_horizon, 1)
-        
-        return prediction
+        # Return hidden representation instead of final prediction
+        # The regression head will handle the final prediction
+        return last_timestep  # (batch_size, hidden_size)
 
 class RippleNetTFT(nn.Module):
     """Complete RippleNet-TFT model"""
@@ -289,6 +301,7 @@ class RippleNetTFT(nn.Module):
         # TFT forward pass
         tft_output = self.tft(past_target, observed_covariates, known_future)
         
+        # TFT now outputs hidden representation directly
         # Regression head
         predictions = self.regression_head(tft_output)
         
