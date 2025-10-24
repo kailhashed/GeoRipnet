@@ -61,10 +61,10 @@ model:
   
   # TFT Configuration
   tft:
-    hidden_size: 64
-    lstm_layers: 2
-    attention_head_size: 4
-    dropout: 0.1
+    hidden_size: 128
+    lstm_layers: 3
+    attention_head_size: 8
+    dropout: 0.2
     use_quantile_output: false
     quantiles: [0.1, 0.5, 0.9]
   
@@ -82,32 +82,32 @@ training:
   use_ddp: true
   use_mixed_precision: true
   
-  # Training Parameters
-  batch_size: 32
-  learning_rate: 0.0001
-  weight_decay: 0.00001
-  epochs: 100
-  early_stopping_patience: 10
-  
-  # Optimizer
-  optimizer: "AdamW"
-  scheduler: "OneCycleLR"
-  max_lr: 0.001
-  
-  # Data Configuration
-  lookback_window: 60  # days
-  forecast_horizon: 1  # days
-  train_split: 0.7
-  val_split: 0.15
-  test_split: 0.15
-  
-  # Validation
-  validation_frequency: 1
-  save_frequency: 5
-  
-  # Reproducibility
-  seed: 42
-  deterministic: true
+# Training Parameters
+batch_size: 64
+learning_rate: 0.0003
+weight_decay: 0.0001
+epochs: 200
+early_stopping_patience: 15
+
+# Optimizer
+optimizer: "AdamW"
+scheduler: "OneCycleLR"
+max_lr: 0.001
+
+# Data Configuration
+lookback_window: 60  # days
+forecast_horizon: 1  # days
+train_split: 0.7
+val_split: 0.15
+test_split: 0.15
+
+# Validation
+validation_frequency: 1
+save_frequency: 5
+
+# Reproducibility
+seed: 42
+deterministic: true
 
 # Evaluation Configuration
 evaluation:

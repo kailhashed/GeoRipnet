@@ -207,14 +207,14 @@ class RippleNetDataModule:
         self.config = config
         
         # Get split ratios
-        self.train_split = config['training']['train_split']
-        self.val_split = config['training']['val_split']
-        self.test_split = config['training']['test_split']
+        self.train_split = config.get('train_split', 0.7)
+        self.val_split = config.get('val_split', 0.15)
+        self.test_split = config.get('test_split', 0.15)
         
         # Get training parameters
-        self.lookback_window = config['training']['lookback_window']
-        self.forecast_horizon = config['training']['forecast_horizon']
-        self.batch_size = config['training']['batch_size']
+        self.lookback_window = config.get('lookback_window', 60)
+        self.forecast_horizon = config.get('forecast_horizon', 1)
+        self.batch_size = config.get('batch_size', 32)
         
         # Create splits
         self._create_splits()
