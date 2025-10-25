@@ -1,0 +1,32 @@
+2025-10-24 23:09:10,565 - __main__ - INFO - Using device: cuda
+2025-10-24 23:09:10,565 - __main__ - INFO - Starting training mode...
+2025-10-24 23:09:10,565 - __main__ - INFO - Collecting data for oil price prediction...
+2025-10-24 23:09:10,631 - data.oil_data_pipeline - INFO - BigQuery client initialized successfully
+2025-10-24 23:09:10,631 - data.oil_data_pipeline - INFO - Collecting data from 2024-10-24 to 2025-10-24
+2025-10-24 23:09:10,631 - data.oil_data_pipeline - INFO - Collecting oil price data...
+2025-10-24 23:09:12,468 - data.oil_data_pipeline - INFO - Collected 252 records for CL=F
+2025-10-24 23:09:12,533 - data.oil_data_pipeline - INFO - Collected 252 records for BZ=F
+2025-10-24 23:09:12,602 - data.oil_data_pipeline - INFO - Collected 252 records for NG=F
+2025-10-24 23:09:12,603 - data.oil_data_pipeline - INFO - Collecting financial market data...
+2025-10-24 23:09:12,668 - data.oil_data_pipeline - INFO - Collected 250 records for ^GSPC
+2025-10-24 23:09:12,727 - data.oil_data_pipeline - INFO - Collected 250 records for ^DJI
+2025-10-24 23:09:12,784 - data.oil_data_pipeline - INFO - Collected 250 records for ^IXIC
+2025-10-24 23:09:12,856 - data.oil_data_pipeline - INFO - Collected 258 records for EURUSD=X
+2025-10-24 23:09:12,919 - data.oil_data_pipeline - INFO - Collected 258 records for GBPUSD=X
+2025-10-24 23:09:12,980 - data.oil_data_pipeline - INFO - Collected 258 records for USDJPY=X
+2025-10-24 23:09:13,083 - data.oil_data_pipeline - INFO - Collected 250 records for XLE
+2025-10-24 23:09:13,193 - data.oil_data_pipeline - INFO - Collected 250 records for VDE
+2025-10-24 23:09:13,301 - data.oil_data_pipeline - INFO - Collected 250 records for IYE
+2025-10-24 23:09:13,305 - data.oil_data_pipeline - INFO - Collecting GDELT news data from BigQuery...
+2025-10-24 23:09:14,539 - data.oil_data_pipeline - ERROR - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: d7c487f9-9a32-483b-9bfa-271f5f64d065
+
+2025-10-24 23:09:14,539 - data.oil_data_pipeline - INFO - Falling back to local news data
+2025-10-24 23:09:14,539 - data.oil_data_pipeline - WARNING - Creating fallback news data
+2025-10-24 23:09:14,545 - data.oil_data_pipeline - WARNING - Failed to load fallback news data: time data "Fri, 24 Oct 2025 06:00:00 -0400" doesn't match format "%a, %d %b %Y %H:%M:%S GMT", at position 5. You might want to try:
+    - passing `format` if your strings have a consistent format;
+    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;
+    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.
+2025-10-24 23:09:14,545 - data.oil_data_pipeline - INFO - Creating news-to-price time mapping...

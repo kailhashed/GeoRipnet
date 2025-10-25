@@ -1,0 +1,22 @@
+{
+  "source_mse": 12.453923225402832,
+  "source_mae": 1.391610026359558,
+  "source_rmse": 3.5290117263793945,
+  "ripple_mse": 12.301117897033691,
+  "ripple_mae": 1.5748469829559326,
+  "ripple_rmse": 3.5072948932647705,
+  "confidence_mse": 0.023925717920064926,
+  "confidence_mae": 0.12811219692230225,
+  "source_direction_accuracy": 0.3333333432674408,
+  "wti_mse": 28.951030731201172,
+  "wti_mae": 3.974912166595459,
+  "wti_direction_acc": 0.9987292885780334,
+  "brent_mse": 8.407556533813477,
+  "brent_mae": 0.14356383681297302,
+  "brent_direction_acc": 0.001270647975616157,
+  "gas_mse": 0.003181127132847905,
+  "gas_mae": 0.05635394528508186,
+  "gas_direction_acc": 0.0,
+  "overall_mse": 8.259655613452196,
+  "overall_mae": 1.031523068745931
+}

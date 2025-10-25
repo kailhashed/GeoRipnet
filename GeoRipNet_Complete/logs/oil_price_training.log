@@ -1,0 +1,492 @@
+2025-10-24 21:42:40,499 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 21:42:40,499 - __main__ - INFO - Using device: cpu
+2025-10-24 21:42:40,499 - __main__ - INFO - Collecting oil price data...
+2025-10-24 21:42:40,499 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 21:42:43,940 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 21:42:43,940 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 21:42:43,940 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 21:42:45,467 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 21:42:45,467 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 21:42:45,896 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: 7d475210-b324-4717-b103-0b215eb3a7e0
+
+2025-10-24 21:42:45,896 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 21:42:45,896 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 21:42:45,896 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 21:42:45,896 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 21:42:45,896 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 21:42:45,896 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 21:42:45,897 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 21:42:45,897 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 21:42:45,935 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001C1DFE9F9D0>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 21:42:45,937 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001C1DFE9FB10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 21:42:45,937 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001C1DFE9FED0>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 21:42:45,938 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001C1DFF682D0>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 21:42:45,938 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 21:42:54,582 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 21:42:54,582 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 21:43:08,391 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 21:43:08,391 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 21:43:12,916 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 21:43:24,143 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 21:43:24,147 - __main__ - INFO - Oil data collected: 4 samples
+2025-10-24 21:43:24,181 - __main__ - INFO - Oil Price Model initialized with 295,735 parameters
+2025-10-24 21:43:24,182 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:02:07,314 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 22:02:07,314 - __main__ - INFO - Using device: cpu
+2025-10-24 22:02:07,314 - __main__ - INFO - Collecting oil price data...
+2025-10-24 22:02:07,314 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 22:02:10,728 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 22:02:10,728 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 22:02:10,728 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 22:02:12,277 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 22:02:12,277 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 22:02:12,808 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: 0478751a-bc2a-4164-a696-e8d2d1beb8b2
+
+2025-10-24 22:02:12,808 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 22:02:12,808 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 22:02:12,808 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 22:02:12,808 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 22:02:12,808 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 22:02:12,809 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 22:02:12,809 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 22:02:12,809 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 22:02:12,841 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000170D5993B10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:02:12,842 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000170D5993C50>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:02:12,843 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000170D5A6C050>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:02:12,843 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000170D5A6C410>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:02:12,844 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 22:02:23,060 - data.data_pipeline - INFO - SUCCESS: Collected 128 articles from additional sources
+2025-10-24 22:02:23,064 - data.data_pipeline - INFO - TARGET: Total news articles collected: 33
+2025-10-24 22:02:23,064 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 22:02:23,064 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 22:02:34,526 - data.data_pipeline - INFO - SUCCESS: ^GSPC: 250 records
+2025-10-24 22:02:35,314 - data.data_pipeline - INFO - SUCCESS: ^DJI: 250 records
+2025-10-24 22:02:36,110 - data.data_pipeline - INFO - SUCCESS: ^IXIC: 250 records
+2025-10-24 22:02:36,909 - data.data_pipeline - INFO - SUCCESS: ^VIX: 250 records
+2025-10-24 22:02:37,701 - data.data_pipeline - INFO - SUCCESS: EURUSD=X: 258 records
+2025-10-24 22:02:38,496 - data.data_pipeline - INFO - SUCCESS: GBPUSD=X: 258 records
+2025-10-24 22:02:39,290 - data.data_pipeline - INFO - SUCCESS: USDJPY=X: 258 records
+2025-10-24 22:02:40,079 - data.data_pipeline - INFO - SUCCESS: USDCAD=X: 258 records
+2025-10-24 22:02:40,918 - data.data_pipeline - INFO - SUCCESS: XLE: 250 records
+2025-10-24 22:02:41,746 - data.data_pipeline - INFO - SUCCESS: VDE: 250 records
+2025-10-24 22:02:42,574 - data.data_pipeline - INFO - SUCCESS: IYE: 250 records
+2025-10-24 22:02:43,468 - data.data_pipeline - INFO - SUCCESS: XOM: 250 records
+2025-10-24 22:02:44,351 - data.data_pipeline - INFO - SUCCESS: CVX: 250 records
+2025-10-24 22:02:45,228 - data.data_pipeline - INFO - SUCCESS: COP: 250 records
+2025-10-24 22:02:46,071 - data.data_pipeline - INFO - SUCCESS: EOG: 250 records
+2025-10-24 22:02:47,309 - data.data_pipeline - INFO - SUCCESS: SLB: 250 records
+2025-10-24 22:02:48,099 - data.data_pipeline - INFO - SUCCESS: USO: 250 records
+2025-10-24 22:02:48,897 - data.data_pipeline - INFO - SUCCESS: UCO: 250 records
+2025-10-24 22:02:49,697 - data.data_pipeline - INFO - SUCCESS: SCO: 250 records
+2025-10-24 22:02:50,197 - data.data_pipeline - INFO - TARGET: Total financial records collected: 4782
+2025-10-24 22:02:50,202 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 22:02:50,202 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 22:02:50,489 - data.data_pipeline - INFO - SUCCESS: CL=F (Crude Oil WTI): 252 records
+2025-10-24 22:02:51,279 - data.data_pipeline - INFO - SUCCESS: BZ=F (Brent Crude Oil): 252 records
+2025-10-24 22:02:52,079 - data.data_pipeline - INFO - SUCCESS: RB=F (RBOB Gasoline): 252 records
+2025-10-24 22:02:52,865 - data.data_pipeline - INFO - SUCCESS: HO=F (Heating Oil): 252 records
+2025-10-24 22:02:53,652 - data.data_pipeline - INFO - SUCCESS: NG=F (Natural Gas): 252 records
+2025-10-24 22:02:54,168 - data.data_pipeline - INFO - SUCCESS: USO (US Oil Fund): 250 records
+2025-10-24 22:02:54,685 - data.data_pipeline - INFO - SUCCESS: UCO (ProShares Ultra Bloomberg Crude Oil): 250 records
+2025-10-24 22:02:55,201 - data.data_pipeline - INFO - SUCCESS: SCO (ProShares UltraShort Bloomberg Crude Oil): 250 records
+2025-10-24 22:02:55,701 - data.data_pipeline - INFO - TARGET: Total commodity records collected: 2010
+2025-10-24 22:02:55,704 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 22:03:07,042 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 22:03:07,045 - __main__ - INFO - Oil data collected: 33 samples
+2025-10-24 22:03:07,048 - __main__ - INFO - Oil Price Model initialized with 295,735 parameters
+2025-10-24 22:03:07,048 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:03:33,905 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 22:03:33,905 - __main__ - INFO - Using device: cpu
+2025-10-24 22:03:33,905 - __main__ - INFO - Collecting oil price data...
+2025-10-24 22:03:33,906 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 22:03:37,283 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 22:03:37,283 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 22:03:37,283 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 22:03:38,795 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 22:03:38,795 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 22:03:39,209 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: c9dd6130-1d23-43c3-a96c-a8e51c39d6aa
+
+2025-10-24 22:03:39,209 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 22:03:39,209 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 22:03:39,209 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 22:03:39,209 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 22:03:39,209 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 22:03:39,209 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 22:03:39,210 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 22:03:39,210 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 22:03:39,242 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001B98D08BB10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:03:39,243 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001B98D08BC50>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:03:39,244 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001B98D168050>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:03:39,244 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001B98D168410>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:03:39,245 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 22:03:47,896 - data.data_pipeline - INFO - SUCCESS: Collected 128 articles from additional sources
+2025-10-24 22:03:47,900 - data.data_pipeline - INFO - TARGET: Total news articles collected: 33
+2025-10-24 22:03:47,900 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 22:03:47,900 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 22:03:49,294 - data.data_pipeline - INFO - SUCCESS: ^GSPC: 250 records
+2025-10-24 22:03:50,065 - data.data_pipeline - INFO - SUCCESS: ^DJI: 250 records
+2025-10-24 22:03:50,843 - data.data_pipeline - INFO - SUCCESS: ^IXIC: 250 records
+2025-10-24 22:03:51,624 - data.data_pipeline - INFO - SUCCESS: ^VIX: 250 records
+2025-10-24 22:03:52,406 - data.data_pipeline - INFO - SUCCESS: EURUSD=X: 258 records
+2025-10-24 22:03:53,188 - data.data_pipeline - INFO - SUCCESS: GBPUSD=X: 258 records
+2025-10-24 22:03:53,963 - data.data_pipeline - INFO - SUCCESS: USDJPY=X: 258 records
+2025-10-24 22:03:54,743 - data.data_pipeline - INFO - SUCCESS: USDCAD=X: 258 records
+2025-10-24 22:03:55,557 - data.data_pipeline - INFO - SUCCESS: XLE: 250 records
+2025-10-24 22:03:56,378 - data.data_pipeline - INFO - SUCCESS: VDE: 250 records
+2025-10-24 22:03:57,184 - data.data_pipeline - INFO - SUCCESS: IYE: 250 records
+2025-10-24 22:03:58,055 - data.data_pipeline - INFO - SUCCESS: XOM: 250 records
+2025-10-24 22:03:58,944 - data.data_pipeline - INFO - SUCCESS: CVX: 250 records
+2025-10-24 22:03:59,813 - data.data_pipeline - INFO - SUCCESS: COP: 250 records
+2025-10-24 22:04:00,639 - data.data_pipeline - INFO - SUCCESS: EOG: 250 records
+2025-10-24 22:04:01,478 - data.data_pipeline - INFO - SUCCESS: SLB: 250 records
+2025-10-24 22:04:02,260 - data.data_pipeline - INFO - SUCCESS: USO: 250 records
+2025-10-24 22:04:03,033 - data.data_pipeline - INFO - SUCCESS: UCO: 250 records
+2025-10-24 22:04:03,820 - data.data_pipeline - INFO - SUCCESS: SCO: 250 records
+2025-10-24 22:04:04,321 - data.data_pipeline - INFO - TARGET: Total financial records collected: 4782
+2025-10-24 22:04:04,325 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 22:04:04,326 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 22:04:04,602 - data.data_pipeline - INFO - SUCCESS: CL=F (Crude Oil WTI): 252 records
+2025-10-24 22:04:05,382 - data.data_pipeline - INFO - SUCCESS: BZ=F (Brent Crude Oil): 252 records
+2025-10-24 22:04:06,171 - data.data_pipeline - INFO - SUCCESS: RB=F (RBOB Gasoline): 252 records
+2025-10-24 22:04:06,946 - data.data_pipeline - INFO - SUCCESS: HO=F (Heating Oil): 252 records
+2025-10-24 22:04:07,735 - data.data_pipeline - INFO - SUCCESS: NG=F (Natural Gas): 252 records
+2025-10-24 22:04:08,251 - data.data_pipeline - INFO - SUCCESS: USO (US Oil Fund): 250 records
+2025-10-24 22:04:08,766 - data.data_pipeline - INFO - SUCCESS: UCO (ProShares Ultra Bloomberg Crude Oil): 250 records
+2025-10-24 22:04:09,282 - data.data_pipeline - INFO - SUCCESS: SCO (ProShares UltraShort Bloomberg Crude Oil): 250 records
+2025-10-24 22:04:09,782 - data.data_pipeline - INFO - TARGET: Total commodity records collected: 2010
+2025-10-24 22:04:09,785 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 22:04:21,243 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 22:04:21,247 - __main__ - INFO - Oil data collected: 33 samples
+2025-10-24 22:04:21,250 - __main__ - INFO - Oil Price Model initialized with 295,735 parameters
+2025-10-24 22:04:21,250 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:04:49,075 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 22:04:49,076 - __main__ - INFO - Using device: cpu
+2025-10-24 22:04:49,076 - __main__ - INFO - Collecting oil price data...
+2025-10-24 22:04:49,076 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 22:04:52,492 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 22:04:52,493 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 22:04:52,493 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 22:04:53,968 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 22:04:53,969 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 22:04:54,404 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: 2ee694e8-7604-43a8-8c94-062d292742e2
+
+2025-10-24 22:04:54,404 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 22:04:54,404 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 22:04:54,404 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 22:04:54,404 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 22:04:54,404 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 22:04:54,404 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 22:04:54,405 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 22:04:54,405 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 22:04:54,437 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000022681E8FB10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:04:54,438 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000022681E8FC50>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:04:54,439 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000022681F6C050>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:04:54,440 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000022681F6C410>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:04:54,441 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 22:05:03,014 - data.data_pipeline - INFO - SUCCESS: Collected 128 articles from additional sources
+2025-10-24 22:05:03,018 - data.data_pipeline - INFO - TARGET: Total news articles collected: 33
+2025-10-24 22:05:03,018 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 22:05:03,018 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 22:05:03,411 - data.data_pipeline - INFO - SUCCESS: ^GSPC: 250 records
+2025-10-24 22:05:03,987 - data.data_pipeline - INFO - SUCCESS: ^DJI: 250 records
+2025-10-24 22:05:04,552 - data.data_pipeline - INFO - SUCCESS: ^IXIC: 250 records
+2025-10-24 22:05:05,126 - data.data_pipeline - INFO - SUCCESS: ^VIX: 250 records
+2025-10-24 22:05:05,701 - data.data_pipeline - INFO - SUCCESS: EURUSD=X: 258 records
+2025-10-24 22:05:06,274 - data.data_pipeline - INFO - SUCCESS: GBPUSD=X: 258 records
+2025-10-24 22:05:06,851 - data.data_pipeline - INFO - SUCCESS: USDJPY=X: 258 records
+2025-10-24 22:05:07,425 - data.data_pipeline - INFO - SUCCESS: USDCAD=X: 258 records
+2025-10-24 22:05:08,030 - data.data_pipeline - INFO - SUCCESS: XLE: 250 records
+2025-10-24 22:05:08,634 - data.data_pipeline - INFO - SUCCESS: VDE: 250 records
+2025-10-24 22:05:09,250 - data.data_pipeline - INFO - SUCCESS: IYE: 250 records
+2025-10-24 22:05:09,951 - data.data_pipeline - INFO - SUCCESS: XOM: 250 records
+2025-10-24 22:05:10,614 - data.data_pipeline - INFO - SUCCESS: CVX: 250 records
+2025-10-24 22:05:11,245 - data.data_pipeline - INFO - SUCCESS: COP: 250 records
+2025-10-24 22:05:11,861 - data.data_pipeline - INFO - SUCCESS: EOG: 250 records
+2025-10-24 22:05:12,510 - data.data_pipeline - INFO - SUCCESS: SLB: 250 records
+2025-10-24 22:05:13,088 - data.data_pipeline - INFO - SUCCESS: USO: 250 records
+2025-10-24 22:05:13,667 - data.data_pipeline - INFO - SUCCESS: UCO: 250 records
+2025-10-24 22:05:14,245 - data.data_pipeline - INFO - SUCCESS: SCO: 250 records
+2025-10-24 22:05:14,745 - data.data_pipeline - INFO - TARGET: Total financial records collected: 4782
+2025-10-24 22:05:14,750 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 22:05:14,750 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 22:05:14,823 - data.data_pipeline - INFO - SUCCESS: CL=F (Crude Oil WTI): 252 records
+2025-10-24 22:05:15,396 - data.data_pipeline - INFO - SUCCESS: BZ=F (Brent Crude Oil): 252 records
+2025-10-24 22:05:15,974 - data.data_pipeline - INFO - SUCCESS: RB=F (RBOB Gasoline): 252 records
+2025-10-24 22:05:17,093 - data.data_pipeline - INFO - SUCCESS: HO=F (Heating Oil): 252 records
+2025-10-24 22:05:17,669 - data.data_pipeline - INFO - SUCCESS: NG=F (Natural Gas): 252 records
+2025-10-24 22:05:18,186 - data.data_pipeline - INFO - SUCCESS: USO (US Oil Fund): 250 records
+2025-10-24 22:05:18,702 - data.data_pipeline - INFO - SUCCESS: UCO (ProShares Ultra Bloomberg Crude Oil): 250 records
+2025-10-24 22:05:19,217 - data.data_pipeline - INFO - SUCCESS: SCO (ProShares UltraShort Bloomberg Crude Oil): 250 records
+2025-10-24 22:05:19,718 - data.data_pipeline - INFO - TARGET: Total commodity records collected: 2010
+2025-10-24 22:05:19,720 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 22:05:30,979 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 22:05:30,982 - __main__ - INFO - Oil data collected: 33 samples
+2025-10-24 22:05:30,985 - __main__ - INFO - Oil Price Model initialized with 295,735 parameters
+2025-10-24 22:05:30,985 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:05:45,760 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 22:05:45,760 - __main__ - INFO - Using device: cpu
+2025-10-24 22:05:45,760 - __main__ - INFO - Collecting oil price data...
+2025-10-24 22:05:45,760 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 22:05:49,173 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 22:05:49,173 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 22:05:49,173 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 22:05:50,726 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 22:05:50,726 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 22:05:51,113 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: e56802b4-26d4-45d0-a11f-550679f13067
+
+2025-10-24 22:05:51,113 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 22:05:51,113 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 22:05:51,113 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 22:05:51,113 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 22:05:51,113 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 22:05:51,113 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 22:05:51,114 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 22:05:51,114 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 22:05:51,219 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000284D7F8FB10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:05:51,220 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000284D7F8FC50>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:05:51,221 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000284DA068050>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:05:51,222 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x00000284DA068410>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:05:51,222 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 22:06:00,631 - data.data_pipeline - INFO - SUCCESS: Collected 128 articles from additional sources
+2025-10-24 22:06:00,635 - data.data_pipeline - INFO - TARGET: Total news articles collected: 33
+2025-10-24 22:06:00,635 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 22:06:00,635 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 22:06:01,224 - data.data_pipeline - INFO - SUCCESS: ^GSPC: 250 records
+2025-10-24 22:06:01,800 - data.data_pipeline - INFO - SUCCESS: ^DJI: 250 records
+2025-10-24 22:06:02,383 - data.data_pipeline - INFO - SUCCESS: ^IXIC: 250 records
+2025-10-24 22:06:02,975 - data.data_pipeline - INFO - SUCCESS: ^VIX: 250 records
+2025-10-24 22:06:03,556 - data.data_pipeline - INFO - SUCCESS: EURUSD=X: 258 records
+2025-10-24 22:06:04,161 - data.data_pipeline - INFO - SUCCESS: GBPUSD=X: 258 records
+2025-10-24 22:06:04,754 - data.data_pipeline - INFO - SUCCESS: USDJPY=X: 258 records
+2025-10-24 22:06:05,337 - data.data_pipeline - INFO - SUCCESS: USDCAD=X: 258 records
+2025-10-24 22:06:05,947 - data.data_pipeline - INFO - SUCCESS: XLE: 250 records
+2025-10-24 22:06:06,553 - data.data_pipeline - INFO - SUCCESS: VDE: 250 records
+2025-10-24 22:06:07,161 - data.data_pipeline - INFO - SUCCESS: IYE: 250 records
+2025-10-24 22:06:07,821 - data.data_pipeline - INFO - SUCCESS: XOM: 250 records
+2025-10-24 22:06:08,482 - data.data_pipeline - INFO - SUCCESS: CVX: 250 records
+2025-10-24 22:06:09,108 - data.data_pipeline - INFO - SUCCESS: COP: 250 records
+2025-10-24 22:06:09,736 - data.data_pipeline - INFO - SUCCESS: EOG: 250 records
+2025-10-24 22:06:10,367 - data.data_pipeline - INFO - SUCCESS: SLB: 250 records
+2025-10-24 22:06:10,946 - data.data_pipeline - INFO - SUCCESS: USO: 250 records
+2025-10-24 22:06:11,521 - data.data_pipeline - INFO - SUCCESS: UCO: 250 records
+2025-10-24 22:06:12,097 - data.data_pipeline - INFO - SUCCESS: SCO: 250 records
+2025-10-24 22:06:12,597 - data.data_pipeline - INFO - TARGET: Total financial records collected: 4782
+2025-10-24 22:06:12,602 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 22:06:12,602 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 22:06:12,680 - data.data_pipeline - INFO - SUCCESS: CL=F (Crude Oil WTI): 252 records
+2025-10-24 22:06:13,257 - data.data_pipeline - INFO - SUCCESS: BZ=F (Brent Crude Oil): 252 records
+2025-10-24 22:06:13,847 - data.data_pipeline - INFO - SUCCESS: RB=F (RBOB Gasoline): 252 records
+2025-10-24 22:06:14,452 - data.data_pipeline - INFO - SUCCESS: HO=F (Heating Oil): 252 records
+2025-10-24 22:06:15,033 - data.data_pipeline - INFO - SUCCESS: NG=F (Natural Gas): 252 records
+2025-10-24 22:06:15,549 - data.data_pipeline - INFO - SUCCESS: USO (US Oil Fund): 250 records
+2025-10-24 22:06:16,065 - data.data_pipeline - INFO - SUCCESS: UCO (ProShares Ultra Bloomberg Crude Oil): 250 records
+2025-10-24 22:06:16,581 - data.data_pipeline - INFO - SUCCESS: SCO (ProShares UltraShort Bloomberg Crude Oil): 250 records
+2025-10-24 22:06:17,081 - data.data_pipeline - INFO - TARGET: Total commodity records collected: 2010
+2025-10-24 22:06:17,084 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 22:06:28,307 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 22:06:28,310 - __main__ - INFO - Oil data collected: 33 samples
+2025-10-24 22:06:28,313 - __main__ - INFO - Oil Price Model initialized with 294,316 parameters
+2025-10-24 22:06:28,313 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:06:46,618 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 22:06:46,618 - __main__ - INFO - Using device: cpu
+2025-10-24 22:06:46,618 - __main__ - INFO - Collecting oil price data...
+2025-10-24 22:06:46,618 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 22:06:50,036 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 22:06:50,036 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 22:06:50,036 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 22:06:51,534 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 22:06:51,534 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 22:06:52,007 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: 7bbb6331-0bb5-4392-a22e-ad3ad3251ea7
+
+2025-10-24 22:06:52,007 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 22:06:52,007 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 22:06:52,007 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 22:06:52,007 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 22:06:52,007 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 22:06:52,007 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 22:06:52,008 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 22:06:52,008 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 22:06:52,013 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000021C84393B10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:06:52,014 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000021C84393C50>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:06:52,014 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000021C84468050>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:06:52,015 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000021C84468410>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:06:52,015 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 22:07:00,688 - data.data_pipeline - INFO - SUCCESS: Collected 128 articles from additional sources
+2025-10-24 22:07:00,692 - data.data_pipeline - INFO - TARGET: Total news articles collected: 33
+2025-10-24 22:07:00,692 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 22:07:00,692 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 22:07:01,644 - data.data_pipeline - INFO - SUCCESS: ^GSPC: 250 records
+2025-10-24 22:07:02,214 - data.data_pipeline - INFO - SUCCESS: ^DJI: 250 records
+2025-10-24 22:07:02,786 - data.data_pipeline - INFO - SUCCESS: ^IXIC: 250 records
+2025-10-24 22:07:03,367 - data.data_pipeline - INFO - SUCCESS: ^VIX: 250 records
+2025-10-24 22:07:03,940 - data.data_pipeline - INFO - SUCCESS: EURUSD=X: 258 records
+2025-10-24 22:07:04,525 - data.data_pipeline - INFO - SUCCESS: GBPUSD=X: 258 records
+2025-10-24 22:07:05,097 - data.data_pipeline - INFO - SUCCESS: USDJPY=X: 258 records
+2025-10-24 22:07:05,701 - data.data_pipeline - INFO - SUCCESS: USDCAD=X: 258 records
+2025-10-24 22:07:06,302 - data.data_pipeline - INFO - SUCCESS: XLE: 250 records
+2025-10-24 22:07:06,910 - data.data_pipeline - INFO - SUCCESS: VDE: 250 records
+2025-10-24 22:07:07,525 - data.data_pipeline - INFO - SUCCESS: IYE: 250 records
+2025-10-24 22:07:08,203 - data.data_pipeline - INFO - SUCCESS: XOM: 250 records
+2025-10-24 22:07:08,871 - data.data_pipeline - INFO - SUCCESS: CVX: 250 records
+2025-10-24 22:07:09,492 - data.data_pipeline - INFO - SUCCESS: COP: 250 records
+2025-10-24 22:07:10,115 - data.data_pipeline - INFO - SUCCESS: EOG: 250 records
+2025-10-24 22:07:10,747 - data.data_pipeline - INFO - SUCCESS: SLB: 250 records
+2025-10-24 22:07:11,323 - data.data_pipeline - INFO - SUCCESS: USO: 250 records
+2025-10-24 22:07:11,896 - data.data_pipeline - INFO - SUCCESS: UCO: 250 records
+2025-10-24 22:07:12,479 - data.data_pipeline - INFO - SUCCESS: SCO: 250 records
+2025-10-24 22:07:12,979 - data.data_pipeline - INFO - TARGET: Total financial records collected: 4782
+2025-10-24 22:07:12,984 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 22:07:12,984 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 22:07:13,066 - data.data_pipeline - INFO - SUCCESS: CL=F (Crude Oil WTI): 252 records
+2025-10-24 22:07:13,639 - data.data_pipeline - INFO - SUCCESS: BZ=F (Brent Crude Oil): 252 records
+2025-10-24 22:07:14,215 - data.data_pipeline - INFO - SUCCESS: RB=F (RBOB Gasoline): 252 records
+2025-10-24 22:07:14,788 - data.data_pipeline - INFO - SUCCESS: HO=F (Heating Oil): 252 records
+2025-10-24 22:07:15,361 - data.data_pipeline - INFO - SUCCESS: NG=F (Natural Gas): 252 records
+2025-10-24 22:07:15,876 - data.data_pipeline - INFO - SUCCESS: USO (US Oil Fund): 250 records
+2025-10-24 22:07:16,392 - data.data_pipeline - INFO - SUCCESS: UCO (ProShares Ultra Bloomberg Crude Oil): 250 records
+2025-10-24 22:07:16,908 - data.data_pipeline - INFO - SUCCESS: SCO (ProShares UltraShort Bloomberg Crude Oil): 250 records
+2025-10-24 22:07:17,409 - data.data_pipeline - INFO - TARGET: Total commodity records collected: 2010
+2025-10-24 22:07:17,412 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 22:07:28,625 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 22:07:28,628 - __main__ - INFO - Oil data collected: 33 samples
+2025-10-24 22:07:28,631 - __main__ - INFO - Oil Price Model initialized with 294,316 parameters
+2025-10-24 22:07:28,631 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:07:55,912 - __main__ - INFO - Starting Oil Price Prediction Training...
+2025-10-24 22:07:55,912 - __main__ - INFO - Using device: cpu
+2025-10-24 22:07:55,912 - __main__ - INFO - Collecting oil price data...
+2025-10-24 22:07:55,912 - __main__ - INFO - Collecting oil price prediction data...
+2025-10-24 22:07:59,375 - data.data_pipeline - INFO - Starting real data collection from free APIs...
+2025-10-24 22:07:59,376 - data.data_pipeline - INFO - Collecting news data...
+2025-10-24 22:07:59,376 - data.data_pipeline - INFO - Fetching GDELT BigQuery data...
+2025-10-24 22:08:01,151 - data.data_pipeline - WARNING - GDELT: Dataset gdeltv2 not found. Using public GDELT dataset.
+2025-10-24 22:08:01,151 - data.data_pipeline - INFO - GDELT: Executing BigQuery for commodity/energy events...
+2025-10-24 22:08:01,612 - data.data_pipeline - WARNING - GDELT BigQuery error: 403 POST https://bigquery.googleapis.com/bigquery/v2/projects/outstanding-map-449312-a0/jobs?prettyPrint=false: Access Denied: Project outstanding-map-449312-a0: User does not have bigquery.jobs.create permission in project outstanding-map-449312-a0.
+
+Location: None
+Job ID: a69b5e10-c234-4064-a635-080dec726296
+
+2025-10-24 22:08:01,612 - data.data_pipeline - INFO - GDELT: To fix this, you need:
+2025-10-24 22:08:01,612 - data.data_pipeline - INFO - 1. Google Cloud Project with BigQuery enabled
+2025-10-24 22:08:01,612 - data.data_pipeline - INFO - 2. Service account with BigQuery access
+2025-10-24 22:08:01,612 - data.data_pipeline - INFO - 3. Set environment variables:
+2025-10-24 22:08:01,612 - data.data_pipeline - INFO -    - GCP_PROJECT_ID=your-project-id
+2025-10-24 22:08:01,612 - data.data_pipeline - INFO -    - GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+2025-10-24 22:08:01,613 - data.data_pipeline - INFO - GDELT data not available, trying additional sources...
+2025-10-24 22:08:01,613 - data.data_pipeline - INFO - Fetching Reuters RSS data...
+2025-10-24 22:08:01,648 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/businessNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001F3E4193B10>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:08:01,649 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/companyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001F3E4193C50>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:08:01,649 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/marketsNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001F3E426C050>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:08:01,650 - data.data_pipeline - WARNING - Reuters RSS error: HTTPSConnectionPool(host='feeds.reuters.com', port=443): Max retries exceeded with url: /reuters/energyNews (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001F3E426C410>: Failed to resolve 'feeds.reuters.com' ([Errno 11001] getaddrinfo failed)"))
+2025-10-24 22:08:01,651 - data.data_pipeline - INFO - Fetching additional free news sources...
+2025-10-24 22:08:10,210 - data.data_pipeline - INFO - SUCCESS: Collected 128 articles from additional sources
+2025-10-24 22:08:10,214 - data.data_pipeline - INFO - TARGET: Total news articles collected: 33
+2025-10-24 22:08:10,214 - data.data_pipeline - INFO - Collecting financial data...
+2025-10-24 22:08:10,214 - data.data_pipeline - INFO - Collecting financial data for 19 symbols...
+2025-10-24 22:08:11,739 - data.data_pipeline - INFO - SUCCESS: ^GSPC: 250 records
+2025-10-24 22:08:12,364 - data.data_pipeline - INFO - SUCCESS: ^DJI: 250 records
+2025-10-24 22:08:12,991 - data.data_pipeline - INFO - SUCCESS: ^IXIC: 250 records
+2025-10-24 22:08:13,638 - data.data_pipeline - INFO - SUCCESS: ^VIX: 250 records
+2025-10-24 22:08:14,271 - data.data_pipeline - INFO - SUCCESS: EURUSD=X: 258 records
+2025-10-24 22:08:14,899 - data.data_pipeline - INFO - SUCCESS: GBPUSD=X: 258 records
+2025-10-24 22:08:15,521 - data.data_pipeline - INFO - SUCCESS: USDJPY=X: 258 records
+2025-10-24 22:08:16,161 - data.data_pipeline - INFO - SUCCESS: USDCAD=X: 258 records
+2025-10-24 22:08:16,831 - data.data_pipeline - INFO - SUCCESS: XLE: 250 records
+2025-10-24 22:08:17,505 - data.data_pipeline - INFO - SUCCESS: VDE: 250 records
+2025-10-24 22:08:18,166 - data.data_pipeline - INFO - SUCCESS: IYE: 250 records
+2025-10-24 22:08:19,132 - data.data_pipeline - INFO - SUCCESS: XOM: 250 records
+2025-10-24 22:08:19,846 - data.data_pipeline - INFO - SUCCESS: CVX: 250 records
+2025-10-24 22:08:20,524 - data.data_pipeline - INFO - SUCCESS: COP: 250 records
+2025-10-24 22:08:21,191 - data.data_pipeline - INFO - SUCCESS: EOG: 250 records
+2025-10-24 22:08:22,119 - data.data_pipeline - INFO - SUCCESS: SLB: 250 records
+2025-10-24 22:08:22,862 - data.data_pipeline - INFO - SUCCESS: USO: 250 records
+2025-10-24 22:08:23,745 - data.data_pipeline - INFO - SUCCESS: UCO: 250 records
+2025-10-24 22:08:24,376 - data.data_pipeline - INFO - SUCCESS: SCO: 250 records
+2025-10-24 22:08:24,876 - data.data_pipeline - INFO - TARGET: Total financial records collected: 4782
+2025-10-24 22:08:24,881 - data.data_pipeline - INFO - Collecting commodity prices...
+2025-10-24 22:08:24,881 - data.data_pipeline - INFO - Collecting commodity data for 8 commodities...
+2025-10-24 22:08:25,006 - data.data_pipeline - INFO - SUCCESS: CL=F (Crude Oil WTI): 252 records
+2025-10-24 22:08:25,636 - data.data_pipeline - INFO - SUCCESS: BZ=F (Brent Crude Oil): 252 records
+2025-10-24 22:08:26,267 - data.data_pipeline - INFO - SUCCESS: RB=F (RBOB Gasoline): 252 records
+2025-10-24 22:08:27,144 - data.data_pipeline - INFO - SUCCESS: HO=F (Heating Oil): 252 records
+2025-10-24 22:08:27,867 - data.data_pipeline - INFO - SUCCESS: NG=F (Natural Gas): 252 records
+2025-10-24 22:08:28,383 - data.data_pipeline - INFO - SUCCESS: USO (US Oil Fund): 250 records
+2025-10-24 22:08:28,900 - data.data_pipeline - INFO - SUCCESS: UCO (ProShares Ultra Bloomberg Crude Oil): 250 records
+2025-10-24 22:08:29,416 - data.data_pipeline - INFO - SUCCESS: SCO (ProShares UltraShort Bloomberg Crude Oil): 250 records
+2025-10-24 22:08:29,916 - data.data_pipeline - INFO - TARGET: Total commodity records collected: 2010
+2025-10-24 22:08:29,919 - data.data_pipeline - INFO - Collecting economic indicators...
+2025-10-24 22:08:41,795 - data.data_pipeline - INFO - Collecting country relationship data...
+2025-10-24 22:08:41,798 - __main__ - INFO - Oil data collected: 33 samples
+2025-10-24 22:08:41,801 - __main__ - INFO - Oil Price Model initialized with 294,316 parameters
+2025-10-24 22:08:41,801 - __main__ - INFO - Starting oil price prediction training...
+2025-10-24 22:08:42,221 - __main__ - INFO - Epoch 1/50: Train Loss: 1.914071, Val Loss: 1.695115
+2025-10-24 22:08:42,268 - __main__ - INFO - New best model saved with val_loss: 1.695115
+2025-10-24 22:08:42,274 - __main__ - INFO - Epoch 2/50: Train Loss: 1.903105, Val Loss: 1.699386
+2025-10-24 22:08:42,279 - __main__ - INFO - Epoch 3/50: Train Loss: 1.885507, Val Loss: 1.698874
+2025-10-24 22:08:42,283 - __main__ - INFO - Epoch 4/50: Train Loss: 1.895038, Val Loss: 1.709936
+2025-10-24 22:08:42,288 - __main__ - INFO - Epoch 5/50: Train Loss: 1.900163, Val Loss: 1.705033
+2025-10-24 22:08:42,293 - __main__ - INFO - Epoch 6/50: Train Loss: 1.881005, Val Loss: 1.688965
+2025-10-24 22:08:42,295 - __main__ - INFO - New best model saved with val_loss: 1.688965
+2025-10-24 22:08:42,300 - __main__ - INFO - Epoch 7/50: Train Loss: 1.885105, Val Loss: 1.697935
+2025-10-24 22:08:42,304 - __main__ - INFO - Epoch 8/50: Train Loss: 1.863488, Val Loss: 1.698402
+2025-10-24 22:08:42,310 - __main__ - INFO - Epoch 9/50: Train Loss: 1.878823, Val Loss: 1.702019
+2025-10-24 22:08:42,316 - __main__ - INFO - Epoch 10/50: Train Loss: 1.876132, Val Loss: 1.714141
+2025-10-24 22:08:42,323 - __main__ - INFO - Epoch 11/50: Train Loss: 1.895038, Val Loss: 1.712358
+2025-10-24 22:08:42,330 - __main__ - INFO - Epoch 12/50: Train Loss: 1.894706, Val Loss: 1.724273
+2025-10-24 22:08:42,337 - __main__ - INFO - Epoch 13/50: Train Loss: 1.885884, Val Loss: 1.728264
+2025-10-24 22:08:42,344 - __main__ - INFO - Epoch 14/50: Train Loss: 1.895943, Val Loss: 1.727327
+2025-10-24 22:08:42,350 - __main__ - INFO - Epoch 15/50: Train Loss: 1.890017, Val Loss: 1.728502
+2025-10-24 22:08:42,354 - __main__ - INFO - Epoch 16/50: Train Loss: 1.899107, Val Loss: 1.748819
+2025-10-24 22:08:42,359 - __main__ - INFO - Epoch 17/50: Train Loss: 1.885152, Val Loss: 1.744327
+2025-10-24 22:08:42,363 - __main__ - INFO - Epoch 18/50: Train Loss: 1.855228, Val Loss: 1.717009
+2025-10-24 22:08:42,368 - __main__ - INFO - Epoch 19/50: Train Loss: 1.857236, Val Loss: 1.714792
+2025-10-24 22:08:42,373 - __main__ - INFO - Epoch 20/50: Train Loss: 1.870439, Val Loss: 1.727813
+2025-10-24 22:08:42,378 - __main__ - INFO - Epoch 21/50: Train Loss: 1.880678, Val Loss: 1.709543
+2025-10-24 22:08:42,384 - __main__ - INFO - Epoch 22/50: Train Loss: 1.857686, Val Loss: 1.722517
+2025-10-24 22:08:42,390 - __main__ - INFO - Epoch 23/50: Train Loss: 1.903576, Val Loss: 1.724661
+2025-10-24 22:08:42,395 - __main__ - INFO - Epoch 24/50: Train Loss: 1.868212, Val Loss: 1.745737
+2025-10-24 22:08:42,401 - __main__ - INFO - Epoch 25/50: Train Loss: 1.863310, Val Loss: 1.727413
+2025-10-24 22:08:42,406 - __main__ - INFO - Epoch 26/50: Train Loss: 1.884404, Val Loss: 1.697379
+2025-10-24 22:08:42,412 - __main__ - INFO - Epoch 27/50: Train Loss: 1.850489, Val Loss: 1.725486
+2025-10-24 22:08:42,418 - __main__ - INFO - Epoch 28/50: Train Loss: 1.872130, Val Loss: 1.717159
+2025-10-24 22:08:42,424 - __main__ - INFO - Epoch 29/50: Train Loss: 1.859914, Val Loss: 1.743864
+2025-10-24 22:08:42,430 - __main__ - INFO - Epoch 30/50: Train Loss: 1.849237, Val Loss: 1.735139
+2025-10-24 22:08:42,436 - __main__ - INFO - Epoch 31/50: Train Loss: 1.893301, Val Loss: 1.716133
+2025-10-24 22:08:42,441 - __main__ - INFO - Epoch 32/50: Train Loss: 1.839217, Val Loss: 1.719336
+2025-10-24 22:08:42,446 - __main__ - INFO - Epoch 33/50: Train Loss: 1.847174, Val Loss: 1.706818
+2025-10-24 22:08:42,450 - __main__ - INFO - Epoch 34/50: Train Loss: 1.844885, Val Loss: 1.701201
+2025-10-24 22:08:42,455 - __main__ - INFO - Epoch 35/50: Train Loss: 1.863264, Val Loss: 1.715771
+2025-10-24 22:08:42,460 - __main__ - INFO - Epoch 36/50: Train Loss: 1.853401, Val Loss: 1.706982
+2025-10-24 22:08:42,464 - __main__ - INFO - Epoch 37/50: Train Loss: 1.872569, Val Loss: 1.701012
+2025-10-24 22:08:42,468 - __main__ - INFO - Epoch 38/50: Train Loss: 1.847213, Val Loss: 1.704601
+2025-10-24 22:08:42,473 - __main__ - INFO - Epoch 39/50: Train Loss: 1.860788, Val Loss: 1.721533
+2025-10-24 22:08:42,478 - __main__ - INFO - Epoch 40/50: Train Loss: 1.861633, Val Loss: 1.691179
+2025-10-24 22:08:42,482 - __main__ - INFO - Epoch 41/50: Train Loss: 1.849303, Val Loss: 1.725288
+2025-10-24 22:08:42,487 - __main__ - INFO - Epoch 42/50: Train Loss: 1.874328, Val Loss: 1.697256
+2025-10-24 22:08:42,492 - __main__ - INFO - Epoch 43/50: Train Loss: 1.864234, Val Loss: 1.748965
+2025-10-24 22:08:42,498 - __main__ - INFO - Epoch 44/50: Train Loss: 1.850594, Val Loss: 1.694421
+2025-10-24 22:08:42,503 - __main__ - INFO - Epoch 45/50: Train Loss: 1.843114, Val Loss: 1.716424
+2025-10-24 22:08:42,509 - __main__ - INFO - Epoch 46/50: Train Loss: 1.874228, Val Loss: 1.705689
+2025-10-24 22:08:42,515 - __main__ - INFO - Epoch 47/50: Train Loss: 1.867594, Val Loss: 1.760772
+2025-10-24 22:08:42,520 - __main__ - INFO - Epoch 48/50: Train Loss: 1.857195, Val Loss: 1.727209
+2025-10-24 22:08:42,526 - __main__ - INFO - Epoch 49/50: Train Loss: 1.860841, Val Loss: 1.701638
+2025-10-24 22:08:42,531 - __main__ - INFO - Epoch 50/50: Train Loss: 1.853154, Val Loss: 1.720718
+2025-10-24 22:08:42,543 - __main__ - INFO - Training completed. Best validation loss: 1.688965
+2025-10-24 22:08:42,543 - __main__ - INFO - Oil price prediction training completed successfully!

@@ -1,0 +1,58 @@
+{
+  "evaluation_timestamp": "2025-10-24T22:19:32.755451",
+  "model_type": "Oil Price Prediction with Geopolitical Impact",
+  "model_parameters": 294316,
+  "evaluation_metrics": {
+    "source_prices": {
+      "mse": 0.9775120615959167,
+      "rmse": 0.9886920964566859,
+      "mae": 0.7917410731315613,
+      "mape": 1.090654969215393,
+      "r2": -0.016862710937857628
+    },
+    "ripple_prices": {
+      "mse": 1.0198091268539429,
+      "rmse": 1.0098559931267146,
+      "mae": 0.8119410872459412,
+      "mape": 1.3312277793884277,
+      "r2": -0.005659222602844238
+    },
+    "ripple_strength": {
+      "mse": 0.08087383210659027,
+      "rmse": 0.28438324863920916,
+      "mae": 0.24603955447673798,
+      "r2": -0.007060348987579346
+    },
+    "confidence": {
+      "mse": 0.07878252118825912,
+      "rmse": 0.28068224238141454,
+      "mae": 0.23862360417842865,
+      "r2": 0.0022014975547790527
+    }
+  },
+  "oil_products": [
+    "WTI Crude Oil",
+    "Brent Crude Oil",
+    "Gasoline"
+  ],
+  "countries": [
+    "USA",
+    "China",
+    "Germany",
+    "Japan",
+    "UK",
+    "Russia",
+    "Saudi Arabia",
+    "Canada",
+    "Brazil",
+    "India"
+  ],
+  "summary": {
+    "source_price_rmse": 0.9886920964566859,
+    "source_price_r2": -0.016862710937857628,
+    "ripple_price_rmse": 1.0098559931267146,
+    "ripple_price_r2": -0.005659222602844238,
+    "ripple_strength_rmse": 0.28438324863920916,
+    "confidence_rmse": 0.28068224238141454
+  }
+}
