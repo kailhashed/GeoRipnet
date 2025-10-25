@@ -1,0 +1,88 @@
+# GeoRipNet Advanced Configuration File
+
+# Model Architecture
+model:
+  # Benchmark Model (Temporal Fusion Transformer)
+  benchmark_input_dim: 50          # Number of global macro features
+  num_benchmarks: 3                # WTI, Brent, Oman/Dubai
+  
+  # Local Delta Model (Temporal CNN)
+  local_input_dim: 40              # Per-country feature dimension
+  country_embedding_dim: 64        # Learned country embedding size
+  local_hidden_channels: [128, 256, 256, 128]  # TCN channel progression
+  
+  # Ripple GNN
+  event_embed_dim: 384             # FinBERT/sentence-transformer dimension
+  ripple_hidden_dim: 128           # Hidden dimension for GNN
+  ripple_num_heads: 4              # Number of attention heads
+  ripple_num_layers: 2             # Number of GNN layers
+  
+  # General
+  d_model: 256                     # Hidden dimension for TFT
+  dropout: 0.3                     # Dropout probability
+  seq_len: 30                      # Input sequence length (days)
+
+# Training Configuration
+training:
+  learning_rate: 5.0e-5            # Initial learning rate
+  weight_decay: 1.0e-5             # AdamW weight decay
+  gradient_clip_norm: 1.0          # Max gradient norm
+  
+  # Advanced Techniques
+  swa_start_epoch: 10              # When to start SWA
+  early_stopping_patience: 15      # Epochs to wait before early stopping
+  scheduler_type: 'onecycle'       # 'onecycle', 'cosine', or null
+  
+  # Batch and Epochs
+  batch_size: 32
+  num_epochs: 100
+  
+  # Data
+  seq_len: 30                      # Must match model.seq_len
+  pred_horizon: 1                  # Prediction horizon (days)
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+# Loss Function Weights
+loss:
+  lambda_huber: 1.0                # Huber loss weight
+  lambda_directional: 0.3          # Directional accuracy weight
+  lambda_correlation: 0.2          # Ripple correlation weight
+  lambda_quantile: 0.0             # Quantile loss weight (0 = disabled)
+  huber_delta: 1.0                 # Huber loss threshold
+
+# Data Preprocessing
+preprocessing:
+  scaler_type: 'standard'          # 'standard', 'robust', or 'minmax'
+  create_lag_features: true
+  create_technical_indicators: true
+
+# Hardware
+hardware:
+  device: 'cuda'                   # 'cuda' or 'cpu'
+  num_workers: 4                   # DataLoader workers (set 0 for Windows)
+  use_amp: true                    # Automatic Mixed Precision
+  use_swa: true                    # Stochastic Weight Averaging
+
+# Evaluation
+evaluation:
+  compute_uncertainty: true        # MC Dropout uncertainty
+  num_mc_samples: 10              # Number of MC dropout samples
+  confidence_level: 0.8           # Confidence interval level (80%)
+
+# Paths
+paths:
+  data_dir: 'data'
+  output_dir: 'outputs'
+  checkpoint_dir: 'outputs/checkpoints'
+  plots_dir: 'outputs/plots'
+
+# Reproducibility
+seed: 42
+
+# Ensemble (optional)
+ensemble:
+  enabled: false                   # Enable ensemble training
+  num_models: 3                    # Number of models in ensemble
+
