@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(mv urals_oil_full.csv ../raw_backup_do_not_use/)",
+      "Bash(mkdir -p ../raw_backup)",
+      "Bash(mv urals_oil_full.csv ../raw_backup/)",
+      "Bash(__NEW_LINE_386e571d92212932__ echo:*)",
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import comtradeapicall; print\\(''OK''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python src/collect_comtrade_2010_2017.py)",
+      "Bash(python -c \"import pandas as pd; df=pd.read_parquet\\(''''F:/Kailash/srm/research/georipnet/data/aligned_prices.parquet''''\\); print\\(df.shape\\); print\\(df.head\\(3\\)\\); print\\(df.tail\\(3\\)\\); print\\(df.isna\\(\\).sum\\(\\)\\)\")",
+      "Bash(python src/visualize_data.py)"
+    ]
+  }
+}

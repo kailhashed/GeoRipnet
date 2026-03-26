@@ -1,0 +1,68 @@
+"""
+Central configuration for GeoRipNet.
+All paths, constants, and hyperparameters live here.
+"""
+from pathlib import Path
+
+ROOT = Path(__file__).parent.parent
+
+# ── Directories ───────────────────────────────────────────────────────────────
+DATA_DIR        = ROOT / "data"
+PRICE_DIR       = DATA_DIR / "price"
+COMTRADE_DIR    = DATA_DIR / "uncomtrade"
+GDELT_DIR       = DATA_DIR / "gdelt_data"
+RAW_CACHE_DIR   = GDELT_DIR / "raw_cache"
+CHECKPOINT_DIR  = ROOT / "checkpoints"
+RESULTS_DIR     = ROOT / "results"
+
+for d in [CHECKPOINT_DIR, RESULTS_DIR, RAW_CACHE_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
+
+# ── Price files (normalized, YYYY-MM-DD ascending) ───────────────────────────
+PRICE_FILES = {
+    "WTI":    PRICE_DIR / "wti_daily.csv",
+    "Brent":  PRICE_DIR / "brent_daily.csv",
+    "OPEC":   PRICE_DIR / "opec_daily.csv",
+    "Urals":  PRICE_DIR / "urals_daily.csv",
+    "Indian": PRICE_DIR / "indian_basket_daily.csv",
+}
+
+# Node order must match price files and Comtrade adjacency matrix
+NODES = ["WTI", "Brent", "OPEC", "Urals", "Indian"]
+NODE_COUNTRIES = {
+    "WTI":    ["USA"],
+    "Brent":  ["GBR", "NOR"],
+    "OPEC":   ["SAU"],
+    "Urals":  ["RUS"],
+    "Indian": ["IND"],
+}
+N_NODES = 5
+
+# ── Comtrade ──────────────────────────────────────────────────────────────────
+ADJACENCY_FILE = COMTRADE_DIR / "adjacency_monthly.parquet"
+
+# ── GDELT ─────────────────────────────────────────────────────────────────────
+GDELT_TENSOR_FILE = GDELT_DIR / "daily_gdelt_tensor.parquet"
+GDELT_CAMEO_CODES = ["13", "17", "18", "19", "20"]
+GDELT_CHANNELS    = ["GoldsteinScale", "AvgTone", "NumMentions"]
+N_CHANNELS        = 3
+
+# ── Dataset split ─────────────────────────────────────────────────────────────
+TRAIN_START = "2010-01-01"
+TRAIN_END   = "2019-12-31"
+VAL_START   = "2020-01-01"
+VAL_END     = "2021-12-31"
+TEST_START  = "2022-01-01"
+
+# ── Model hyperparameters ─────────────────────────────────────────────────────
+LOOKBACK_WINDOW = 20        # k — ablated over {10, 20, 30}
+D_MODEL         = 64
+N_HEADS_GAT     = 2
+N_TRANSFORMER_LAYERS = 2
+DROPOUT         = 0.1
+
+# ── Training ──────────────────────────────────────────────────────────────────
+BATCH_SIZE      = 64
+LR              = 1e-3
+EPOCHS          = 100
+PATIENCE        = 10        # early stopping patience
