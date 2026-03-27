@@ -1,9 +1,22 @@
 """
 collect_gdelt.py
-Downloads GDELT event data and builds daily 5×5×3 tensors.
+Downloads GDELT event data and builds daily 5x5x3 tensors.
 
 Node map:
   0=WTI/USA, 1=Brent/GBR+NOR, 2=OPEC/SAU, 3=Urals/RUS, 4=Indian/IND
+
+URL format (confirmed working):
+  http://data.gdeltproject.org/events/YYYYMMDD.export.CSV.zip
+  Available from 2013-04-01 onwards. Dates before that get zeros.
+
+File format: tab-separated, NO header row, 58 columns.
+  Col  1 = SQLDATE (YYYYMMDD)
+  Col  7 = Actor1CountryCode (3-letter CAMEO: USA, GBR, RUS, ...)
+  Col 17 = Actor2CountryCode
+  Col 26 = EventCode (CAMEO event code)
+  Col 30 = GoldsteinScale
+  Col 31 = NumMentions
+  Col 34 = AvgTone
 
 Output:
   data/gdelt_data/daily_gdelt_tensor.parquet
@@ -11,57 +24,55 @@ Output:
 
 Usage:
   python src/collect_gdelt.py
-  python src/collect_gdelt.py --start 2015-01-01 --end 2020-12-31
+  python src/collect_gdelt.py --start 2013-04-01 --end 2020-12-31
 """
 import sys
-import os
 import io
 import zipfile
 import argparse
 import requests
 import pandas as pd
-import numpy as np
 from pathlib import Path
 from itertools import product
 
-# Allow importing config from same directory
 sys.path.insert(0, str(Path(__file__).parent))
 from config import DATA_DIR, GDELT_DIR, RAW_CACHE_DIR, GDELT_TENSOR_FILE
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-FIPS_TO_NODE = {'US': 0, 'UK': 1, 'NO': 1, 'SA': 2, 'RS': 3, 'IN': 4}
+# CAMEO 3-letter country codes used by GDELT (not FIPS 2-letter)
+CAMEO_TO_NODE = {'USA': 0, 'GBR': 1, 'NOR': 1, 'SAU': 2, 'RUS': 3, 'IND': 4}
 N_NODES = 5
 
-# CAMEO codes: hostile/conflict (startswith any of these prefixes)
+# CAMEO event codes: hostile/conflict events
 CAMEO_PREFIXES = {'13', '17', '18', '19', '20'}
 
 # All 20 non-diagonal (from, to) pairs
 ALL_PAIRS = [(i, j) for i, j in product(range(N_NODES), range(N_NODES)) if i != j]
 
-# GDELT 1.0 column positions (0-indexed, tab-separated, NO header)
-V1_COLS = {
-    'SQLDATE': 1,
-    'Actor1CountryCode': 5,
-    'Actor2CountryCode': 15,
-    'EventCode': 26,
-    'GoldsteinScale': 30,
-    'NumMentions': 31,
-    'AvgTone': 34,
-}
-V1_USE_COLS = list(V1_COLS.values())
-V1_COL_NAMES = list(V1_COLS.keys())
+# Column positions (0-indexed, no header row)
+COL_SQLDATE           = 1
+COL_ACTOR1_COUNTRY    = 7
+COL_ACTOR2_COUNTRY    = 17
+COL_EVENTCODE         = 26
+COL_GOLDSTEIN         = 30
+COL_NUMMENTIONS       = 31
+COL_AVGTONE           = 34
 
-# GDELT 2.0 uses the same column names but has a header row
-V2_USE_COLS = list(V1_COLS.keys())
+USE_COLS  = [COL_SQLDATE, COL_ACTOR1_COUNTRY, COL_ACTOR2_COUNTRY,
+             COL_EVENTCODE, COL_GOLDSTEIN, COL_NUMMENTIONS, COL_AVGTONE]
+COL_NAMES = ['SQLDATE', 'Actor1CountryCode', 'Actor2CountryCode',
+             'EventCode', 'GoldsteinScale', 'NumMentions', 'AvgTone']
 
-REQUEST_TIMEOUT = 120  # seconds
+# Earliest date with a file at the /events/ URL
+GDELT_EARLIEST = '2013-04-01'
+
+REQUEST_TIMEOUT = 120
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def cameo_filter(event_codes: pd.Series) -> pd.Series:
-    """Return boolean mask for rows matching our CAMEO prefixes."""
     ec = event_codes.astype(str).str.strip()
     mask = pd.Series(False, index=event_codes.index)
     for prefix in CAMEO_PREFIXES:
@@ -69,30 +80,19 @@ def cameo_filter(event_codes: pd.Series) -> pd.Series:
     return mask
 
 
-def fips_to_node(code: str) -> int:
-    """Map FIPS country code to node index, or -1 if not in our set."""
-    return FIPS_TO_NODE.get(str(code).strip().upper(), -1)
+def country_to_node(code: str) -> int:
+    return CAMEO_TO_NODE.get(str(code).strip().upper(), -1)
 
 
 def aggregate_daily(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Given a filtered GDELT DataFrame with columns
-    [date_str, from_node, to_node, GoldsteinScale, AvgTone, NumMentions],
-    aggregate to one row per (date, from_node, to_node).
-    """
-    grp = df.groupby(['date', 'from_node', 'to_node'], as_index=False).agg(
+    return df.groupby(['date', 'from_node', 'to_node'], as_index=False).agg(
         GoldsteinScale=('GoldsteinScale', 'mean'),
         AvgTone=('AvgTone', 'mean'),
         NumMentions=('NumMentions', 'sum'),
     )
-    return grp
 
 
 def fill_all_pairs(grp: pd.DataFrame, date_str: str) -> pd.DataFrame:
-    """
-    Ensure all 20 non-diagonal (from, to) pairs exist for a given date.
-    Missing pairs are filled with zeros.
-    """
     full = pd.DataFrame(ALL_PAIRS, columns=['from_node', 'to_node'])
     full['date'] = date_str
     merged = full.merge(grp, on=['date', 'from_node', 'to_node'], how='left')
@@ -102,165 +102,85 @@ def fill_all_pairs(grp: pd.DataFrame, date_str: str) -> pd.DataFrame:
     return merged[['date', 'from_node', 'to_node', 'GoldsteinScale', 'AvgTone', 'NumMentions']]
 
 
-def parse_gdelt_df(raw_df: pd.DataFrame, is_v1: bool) -> pd.DataFrame:
-    """
-    Given a raw GDELT DataFrame, filter and return a cleaned DataFrame
-    with columns [date, from_node, to_node, GoldsteinScale, AvgTone, NumMentions].
-    """
-    if is_v1:
-        raw_df.columns = list(range(len(raw_df.columns)))
-        # Select only needed columns
-        try:
-            df = raw_df[V1_USE_COLS].copy()
-        except KeyError:
-            # Some v1 files may have fewer columns — skip gracefully
-            return pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                         'GoldsteinScale', 'AvgTone', 'NumMentions'])
-        df.columns = V1_COL_NAMES
-    else:
-        # v2 has header; keep only the columns we need
-        needed = [c for c in V2_USE_COLS if c in raw_df.columns]
-        if len(needed) < len(V2_USE_COLS):
-            return pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                         'GoldsteinScale', 'AvgTone', 'NumMentions'])
-        df = raw_df[V2_USE_COLS].copy()
+def parse_gdelt_raw(raw_df: pd.DataFrame) -> pd.DataFrame:
+    """Parse raw GDELT DataFrame (no header) into filtered event rows."""
+    raw_df.columns = list(range(len(raw_df.columns)))
+    if len(raw_df.columns) <= max(USE_COLS):
+        return pd.DataFrame(columns=['date', 'from_node', 'to_node',
+                                     'GoldsteinScale', 'AvgTone', 'NumMentions'])
+    df = raw_df[USE_COLS].copy()
+    df.columns = COL_NAMES
 
-    # Coerce numeric
-    df['SQLDATE'] = df['SQLDATE'].astype(str).str.strip()
+    df['SQLDATE']       = df['SQLDATE'].astype(str).str.strip()
     df['GoldsteinScale'] = pd.to_numeric(df['GoldsteinScale'], errors='coerce')
-    df['AvgTone'] = pd.to_numeric(df['AvgTone'], errors='coerce')
-    df['NumMentions'] = pd.to_numeric(df['NumMentions'], errors='coerce').fillna(0)
+    df['AvgTone']        = pd.to_numeric(df['AvgTone'],        errors='coerce')
+    df['NumMentions']    = pd.to_numeric(df['NumMentions'],    errors='coerce').fillna(0)
 
-    # Filter CAMEO
+    # Keep only hostile/conflict events
     df = df[cameo_filter(df['EventCode'])].copy()
     if df.empty:
         return pd.DataFrame(columns=['date', 'from_node', 'to_node',
                                      'GoldsteinScale', 'AvgTone', 'NumMentions'])
 
     # Map country codes to nodes
-    df['from_node'] = df['Actor1CountryCode'].apply(fips_to_node)
-    df['to_node']   = df['Actor2CountryCode'].apply(fips_to_node)
+    df['from_node'] = df['Actor1CountryCode'].apply(country_to_node)
+    df['to_node']   = df['Actor2CountryCode'].apply(country_to_node)
 
-    # Keep only rows where both actors are in our node set and are different
-    df = df[(df['from_node'] >= 0) & (df['to_node'] >= 0) & (df['from_node'] != df['to_node'])].copy()
+    # Keep only rows where both actors are in our node set and differ
+    df = df[(df['from_node'] >= 0) & (df['to_node'] >= 0) &
+            (df['from_node'] != df['to_node'])].copy()
     if df.empty:
         return pd.DataFrame(columns=['date', 'from_node', 'to_node',
                                      'GoldsteinScale', 'AvgTone', 'NumMentions'])
 
-    # Parse date as YYYYMMDD string → YYYY-MM-DD
-    df['date'] = pd.to_datetime(df['SQLDATE'], format='%Y%m%d', errors='coerce').dt.strftime('%Y-%m-%d')
+    df['date'] = pd.to_datetime(df['SQLDATE'], format='%Y%m%d',
+                                errors='coerce').dt.strftime('%Y-%m-%d')
     df = df.dropna(subset=['date', 'GoldsteinScale', 'AvgTone'])
-
-    return df[['date', 'from_node', 'to_node', 'GoldsteinScale', 'AvgTone', 'NumMentions']].copy()
-
-
-def download_zip(url: str, timeout: int = REQUEST_TIMEOUT) -> bytes:
-    """Download a zip file and return its raw bytes."""
-    resp = requests.get(url, timeout=timeout, stream=True)
-    resp.raise_for_status()
-    return resp.content
+    return df[['date', 'from_node', 'to_node',
+               'GoldsteinScale', 'AvgTone', 'NumMentions']].copy()
 
 
-def read_gdelt_zip(zip_bytes: bytes, is_v1: bool) -> pd.DataFrame:
-    """Read GDELT CSV from zip bytes into a DataFrame."""
-    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
-        csv_names = [n for n in z.namelist() if n.endswith('.CSV') or n.endswith('.csv')]
-        if not csv_names:
-            return pd.DataFrame()
-        with z.open(csv_names[0]) as f:
-            if is_v1:
-                df = pd.read_csv(f, sep='\t', header=None, dtype=str,
-                                 on_bad_lines='skip', low_memory=False)
-            else:
-                df = pd.read_csv(f, sep='\t', header=0, dtype=str,
-                                 on_bad_lines='skip', low_memory=False)
-    return df
-
-
-# ── Year-level (GDELT 1.0, 2010-2014) ────────────────────────────────────────
-
-def process_v1_year(year: int, trading_dates: set) -> pd.DataFrame:
+def download_and_parse_day(date_str: str) -> pd.DataFrame:
     """
-    Download the full annual GDELT 1.0 zip for `year`, filter to our trading
-    dates and node pairs, and return aggregated daily rows.
+    Download GDELT zip for `date_str` (YYYY-MM-DD), parse, filter to
+    events on that exact date, and return fill_all_pairs result.
     """
-    url = f"http://data.gdeltproject.org/events/{year}.zip"
-    print(f"  Downloading GDELT 1.0 — {year} from {url} ...")
+    date_compact = date_str.replace('-', '')
+    url = f"http://data.gdeltproject.org/events/{date_compact}.export.CSV.zip"
+    empty = pd.DataFrame(columns=['date', 'from_node', 'to_node',
+                                   'GoldsteinScale', 'AvgTone', 'NumMentions'])
     try:
-        zip_bytes = download_zip(url)
-    except Exception as e:
-        print(f"  WARNING: Could not download {year}: {e}")
-        return pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                     'GoldsteinScale', 'AvgTone', 'NumMentions'])
-
-    raw_df = read_gdelt_zip(zip_bytes, is_v1=True)
-    if raw_df.empty:
-        return pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                     'GoldsteinScale', 'AvgTone', 'NumMentions'])
-
-    parsed = parse_gdelt_df(raw_df, is_v1=True)
-    if parsed.empty:
-        return parsed
-
-    # Keep only trading dates
-    parsed = parsed[parsed['date'].isin(trading_dates)]
-    if parsed.empty:
-        return pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                     'GoldsteinScale', 'AvgTone', 'NumMentions'])
-
-    # Aggregate to daily
-    agg = aggregate_daily(parsed)
-
-    # Fill all pairs per date
-    date_frames = []
-    for d in agg['date'].unique():
-        d_rows = agg[agg['date'] == d]
-        date_frames.append(fill_all_pairs(d_rows, d))
-
-    return pd.concat(date_frames, ignore_index=True) if date_frames else pd.DataFrame(
-        columns=['date', 'from_node', 'to_node', 'GoldsteinScale', 'AvgTone', 'NumMentions']
-    )
-
-
-# ── Day-level (GDELT 2.0, 2015+) ─────────────────────────────────────────────
-
-def process_v2_day(date_str: str) -> pd.DataFrame:
-    """
-    Download a single GDELT 2.0 daily export, parse, and return aggregated rows
-    for all 20 (from, to) pairs for that date.
-    """
-    date_compact = date_str.replace('-', '')  # YYYYMMDD
-    url = f"http://data.gdeltproject.org/gdeltv2/{date_compact}.export.CSV.zip"
-
-    try:
-        zip_bytes = download_zip(url)
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        zip_bytes = resp.content
     except requests.HTTPError as e:
         if e.response is not None and e.response.status_code == 404:
-            # File just doesn't exist for this date — fill zeros
-            pass
+            pass  # no file for this date — fill zeros
         else:
-            print(f"  WARNING: HTTP error for {date_str}: {e}")
-        return fill_all_pairs(pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                                     'GoldsteinScale', 'AvgTone', 'NumMentions']),
-                               date_str)
+            print(f"  WARNING HTTP {date_str}: {e}")
+        return fill_all_pairs(empty, date_str)
     except Exception as e:
-        print(f"  WARNING: Could not download {date_str}: {e}")
-        return fill_all_pairs(pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                                     'GoldsteinScale', 'AvgTone', 'NumMentions']),
-                               date_str)
+        print(f"  WARNING {date_str}: {e}")
+        return fill_all_pairs(empty, date_str)
 
-    raw_df = read_gdelt_zip(zip_bytes, is_v1=False)
-    if raw_df.empty:
-        return fill_all_pairs(pd.DataFrame(columns=['date', 'from_node', 'to_node',
-                                                     'GoldsteinScale', 'AvgTone', 'NumMentions']),
-                               date_str)
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+            csv_names = [n for n in z.namelist()
+                         if n.upper().endswith('.CSV')]
+            if not csv_names:
+                return fill_all_pairs(empty, date_str)
+            with z.open(csv_names[0]) as f:
+                raw_df = pd.read_csv(f, sep='\t', header=None, dtype=str,
+                                     on_bad_lines='skip', low_memory=False)
+    except Exception as e:
+        print(f"  WARNING unzip {date_str}: {e}")
+        return fill_all_pairs(empty, date_str)
 
-    parsed = parse_gdelt_df(raw_df, is_v1=False)
+    parsed = parse_gdelt_raw(raw_df)
+    # Filter to only events whose SQLDATE matches the file date
     parsed = parsed[parsed['date'] == date_str]
 
-    agg = aggregate_daily(parsed) if not parsed.empty else pd.DataFrame(
-        columns=['date', 'from_node', 'to_node', 'GoldsteinScale', 'AvgTone', 'NumMentions']
-    )
+    agg = aggregate_daily(parsed) if not parsed.empty else empty
     return fill_all_pairs(agg, date_str)
 
 
@@ -270,7 +190,7 @@ def main(start_override: str = None, end_override: str = None):
     GDELT_DIR.mkdir(parents=True, exist_ok=True)
     RAW_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Load trading dates
+    # Load trading dates from aligned prices
     prices = pd.read_parquet(DATA_DIR / "aligned_prices.parquet")
     prices.index = pd.to_datetime(prices.index)
     all_dates = sorted(prices.index.strftime('%Y-%m-%d').tolist())
@@ -280,68 +200,91 @@ def main(start_override: str = None, end_override: str = None):
     if end_override:
         all_dates = [d for d in all_dates if d <= end_override]
 
-    print(f"Trading dates to process: {len(all_dates)} ({all_dates[0]} to {all_dates[-1]})")
+    print(f"Trading dates to process: {len(all_dates)} "
+          f"({all_dates[0]} to {all_dates[-1]})")
+    print(f"GDELT files available from {GDELT_EARLIEST} — "
+          f"earlier dates will be zero-filled.")
 
-    # Load already-processed dates (resumable)
+    # Resumable: skip already-done dates
     already_done = set()
     if GDELT_TENSOR_FILE.exists():
         existing = pd.read_parquet(GDELT_TENSOR_FILE)
+        # Only keep dates that have at least one non-zero row (real signal)
+        # Zero-only dates from the broken previous run should be re-processed
+        nonzero_dates = set(
+            existing.loc[existing['NumMentions'] > 0, 'date'].unique()
+        )
+        zero_only_dates = set(existing['date'].unique()) - nonzero_dates
+        if zero_only_dates:
+            print(f"  Dropping {len(zero_only_dates)} zero-only dates "
+                  f"(from previous broken run) — will re-download")
+            existing = existing[existing['date'].isin(nonzero_dates)]
         already_done = set(existing['date'].unique())
-        print(f"Already processed: {len(already_done)} dates — will skip those")
+        print(f"Already have signal for: {len(already_done)} dates")
     else:
         existing = pd.DataFrame(columns=['date', 'from_node', 'to_node',
                                           'GoldsteinScale', 'AvgTone', 'NumMentions'])
 
-    trading_date_set = set(all_dates)
     all_results = [existing] if not existing.empty else []
 
-    # ── GDELT 1.0: 2010–2014 ─────────────────────────────────────────────────
-    v1_years_needed = []
-    for year in range(2010, 2015):
-        year_dates = {d for d in all_dates if d.startswith(str(year)) and d not in already_done}
-        if year_dates:
-            v1_years_needed.append((year, year_dates))
+    # Dates to process: skip already done AND skip pre-2013-04-01 (no files)
+    dates_to_do = [
+        d for d in all_dates
+        if d not in already_done and d >= GDELT_EARLIEST
+    ]
+    # Pre-GDELT dates: zero-fill once if not already present
+    pre_gdelt = [
+        d for d in all_dates
+        if d < GDELT_EARLIEST and d not in already_done
+    ]
 
-    for year, year_dates in v1_years_needed:
-        print(f"\n--- Processing GDELT 1.0 year {year} ({len(year_dates)} trading days needed) ---")
-        year_df = process_v1_year(year, year_dates)
-        if not year_df.empty:
-            all_results.append(year_df)
-            # Save incrementally
-            combined = pd.concat(all_results, ignore_index=True)
-            combined.to_parquet(GDELT_TENSOR_FILE, index=False)
-            already_done.update(year_df['date'].unique())
-            print(f"  Saved {len(year_df)} rows for year {year}")
+    print(f"Dates to download: {len(dates_to_do)} | "
+          f"Pre-GDELT zero-fill: {len(pre_gdelt)}")
 
-    # ── GDELT 2.0: 2015+ ──────────────────────────────────────────────────────
-    v2_dates = [d for d in all_dates if d >= '2015-01-01' and d not in already_done]
-    print(f"\n--- Processing GDELT 2.0 daily ({len(v2_dates)} dates) ---")
+    # Zero-fill pre-2013 dates
+    if pre_gdelt:
+        empty = pd.DataFrame(columns=['date', 'from_node', 'to_node',
+                                       'GoldsteinScale', 'AvgTone', 'NumMentions'])
+        pre_frames = [fill_all_pairs(empty, d) for d in pre_gdelt]
+        all_results.append(pd.concat(pre_frames, ignore_index=True))
+        print(f"  Zero-filled {len(pre_gdelt)} pre-GDELT dates")
 
-    for idx, date_str in enumerate(v2_dates):
-        if idx > 0 and idx % 100 == 0:
-            combined = pd.concat(all_results, ignore_index=True)
-            combined.to_parquet(GDELT_TENSOR_FILE, index=False)
-            print(f"  Progress: {idx}/{len(v2_dates)} | Saved checkpoint")
-
-        day_df = process_v2_day(date_str)
+    # Download and process each date
+    for idx, date_str in enumerate(dates_to_do):
+        day_df = download_and_parse_day(date_str)
         all_results.append(day_df)
+
+        if (idx + 1) % 100 == 0:
+            combined = pd.concat(all_results, ignore_index=True)
+            combined = combined.drop_duplicates(
+                subset=['date', 'from_node', 'to_node'], keep='last')
+            combined.to_parquet(GDELT_TENSOR_FILE, index=False)
+            n_signal = (combined['NumMentions'] > 0).sum()
+            print(f"  Progress: {idx+1}/{len(dates_to_do)} | "
+                  f"rows with signal: {n_signal}")
 
     # Final save
     if all_results:
         combined = pd.concat(all_results, ignore_index=True)
-        # Deduplicate in case of overlap
-        combined = combined.drop_duplicates(subset=['date', 'from_node', 'to_node'], keep='last')
-        combined = combined.sort_values(['date', 'from_node', 'to_node']).reset_index(drop=True)
+        combined = combined.drop_duplicates(
+            subset=['date', 'from_node', 'to_node'], keep='last')
+        combined = combined.sort_values(
+            ['date', 'from_node', 'to_node']).reset_index(drop=True)
         combined.to_parquet(GDELT_TENSOR_FILE, index=False)
-        print(f"\nDone! Saved {len(combined)} rows to {GDELT_TENSOR_FILE}")
-        print(combined.head(10))
+        n_signal = (combined['NumMentions'] > 0).sum()
+        print(f"\nDone! {len(combined)} rows, {n_signal} with real signal")
+        print(f"Saved to {GDELT_TENSOR_FILE}")
+        # Show a sample of non-zero rows
+        sig = combined[combined['NumMentions'] > 0]
+        if not sig.empty:
+            print(sig.head(10).to_string())
     else:
         print("No data collected.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Collect GDELT data and build daily tensors")
-    parser.add_argument("--start", type=str, default=None, help="Start date YYYY-MM-DD")
-    parser.add_argument("--end",   type=str, default=None, help="End date YYYY-MM-DD")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start", type=str, default=None)
+    parser.add_argument("--end",   type=str, default=None)
     args = parser.parse_args()
     main(start_override=args.start, end_override=args.end)

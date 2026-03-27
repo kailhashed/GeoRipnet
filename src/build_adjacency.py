@@ -1,41 +1,26 @@
 """
 build_adjacency.py
-Parse UN Comtrade HS-2709 CSVs into monthly 5x5 trade adjacency matrices.
+Parse comtrade_bilateral.csv into monthly 5x5 trade adjacency matrices.
 
-Column mapping note (Comtrade CSV has shifted headers):
-  reporterCode  = ISO3 of reporting country
-  partnerCode   = ISO3 of partner country
-  reporterDesc  = flow code (X=export, M=import, RX/DX/RM/FM = re-export/re-import)
-  refMonth      = period YYYYMM
-  fobvalue      = FOB trade value USD
+Input: data/uncomtrade/comtrade_bilateral.csv
+  Columns: period (YYYYMM), reporter (ISO3), partner (ISO3), flow, fob_usd
 """
 import pandas as pd
 import numpy as np
-import glob
 from pathlib import Path
 from config import COMTRADE_DIR, N_NODES
 
 NODE_MAP   = {'USA': 0, 'GBR': 1, 'NOR': 1, 'SAU': 2, 'RUS': 3, 'IND': 4}
 NODE_NAMES = {0: 'WTI/USA', 1: 'Brent/UK+NOR', 2: 'OPEC/SAU', 3: 'Urals/RUS', 4: 'Indian/IND'}
 VALID_ISO  = set(NODE_MAP.keys())
+BILATERAL  = COMTRADE_DIR / "comtrade_bilateral.csv"
 OUT_PARQ   = COMTRADE_DIR / "adjacency_monthly.parquet"
 OUT_CSV    = COMTRADE_DIR / "adjacency_monthly_readable.csv"
 
 
 def _load_raw() -> pd.DataFrame:
-    files = sorted(COMTRADE_DIR.glob("TradeData_*.csv"))
-    frames = [pd.read_csv(f, encoding='latin-1',
-                          usecols=['reporterCode', 'partnerCode', 'reporterDesc',
-                                   'refMonth', 'fobvalue'],
-                          low_memory=False) for f in files]
-    df = pd.concat(frames, ignore_index=True)
-    df = df.rename(columns={
-        'reporterCode': 'reporter',
-        'partnerCode':  'partner',
-        'reporterDesc': 'flow',
-        'refMonth':     'period',
-        'fobvalue':     'value',
-    })
+    df = pd.read_csv(BILATERAL)
+    df = df.rename(columns={'fob_usd': 'value'})
     df['value']  = pd.to_numeric(df['value'],  errors='coerce').fillna(0)
     df['period'] = pd.to_numeric(df['period'], errors='coerce')
     return df.dropna(subset=['period']).assign(period=lambda d: d['period'].astype(int))
@@ -80,7 +65,7 @@ def build_adjacency():
         full.append(y*100+m); m+=1
         if m>12: m,y=1,y+1
     gaps = sorted(set(full)-set(all_periods))
-    print(f"  Gaps: {len(gaps)} missing months{(' → '+str(gaps[:6])) if gaps else ''}")
+    print(f"  Gaps: {len(gaps)} missing months{(' -> '+str(gaps[:6])) if gaps else ''}")
 
     # ── Build matrices ─────────────────────────────────────────────────────────
     parq_rows, read_rows = [], []
