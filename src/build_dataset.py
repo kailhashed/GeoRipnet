@@ -73,41 +73,38 @@ def load_gdelt() -> pd.DataFrame:
 
     The parquet has one row per (date, from_node, to_node) with columns
     [date, from_node, to_node, GoldsteinScale, AvgTone, NumMentions].
-    We pivot each date into a flat [75]-element vector ordered as:
-      [from0_to1_G, from0_to1_A, from0_to1_N, from0_to2_G, ...]
-    i.e., row-major over (from_node, to_node) with 3 channels each,
-    with diagonal (i==j) entries set to zero.
-
-    Returns a DataFrame indexed by date with 75 numeric columns.
+    Returns a DataFrame indexed by date with 75 columns (5×5×3 flattened,
+    row-major over (from_node, to_node, channel), diagonal zeros).
     """
     if not GDELT_TENSOR_FILE.exists():
         raise FileNotFoundError(
             f"{GDELT_TENSOR_FILE} not found. Run collect_gdelt.py first."
         )
     raw = pd.read_parquet(GDELT_TENSOR_FILE)
-    # Normalise column name capitalisation — spec uses lowercase 'date'
     raw.columns = [c.lower() if c.lower() == 'date' else c for c in raw.columns]
     if 'Date' in raw.columns:
         raw = raw.rename(columns={'Date': 'date'})
     raw['date'] = pd.to_datetime(raw['date'])
 
-    channels = ['GoldsteinScale', 'AvgTone', 'NumMentions']
-    records = {}
-    for date, grp in raw.groupby('date'):
-        # Build 5×5×3 tensor (zeros for diagonal / missing pairs)
-        tensor = np.zeros((N_NODES, N_NODES, 3), dtype=np.float32)
-        for _, row in grp.iterrows():
-            fi = int(row['from_node'])
-            ti = int(row['to_node'])
-            if fi == ti:
-                continue
-            tensor[fi, ti, 0] = float(row['GoldsteinScale'])
-            tensor[fi, ti, 1] = float(row['AvgTone'])
-            tensor[fi, ti, 2] = float(row['NumMentions'])
-        records[date] = tensor.flatten().tolist()   # length 75
+    # Drop self-loops
+    raw = raw[raw['from_node'] != raw['to_node']].copy()
 
-    gdelt = pd.DataFrame.from_dict(records, orient='index')
-    gdelt.index = pd.to_datetime(gdelt.index)
+    # Map unique dates to integer row indices
+    dates = sorted(raw['date'].unique())
+    date_to_idx = {d: i for i, d in enumerate(dates)}
+    row_idx = raw['date'].map(date_to_idx).values
+
+    # Compute flat column index for each channel:  i*N*3 + j*3 + ch
+    fi = raw['from_node'].values.astype(int)
+    ti = raw['to_node'].values.astype(int)
+    base = fi * N_NODES * 3 + ti * 3
+
+    arr = np.zeros((len(dates), N_NODES * N_NODES * 3), dtype=np.float32)
+    arr[row_idx, base + 0] = raw['GoldsteinScale'].values
+    arr[row_idx, base + 1] = raw['AvgTone'].values
+    arr[row_idx, base + 2] = raw['NumMentions'].values
+
+    gdelt = pd.DataFrame(arr, index=pd.DatetimeIndex(dates))
     gdelt = gdelt.sort_index()
     print(f"GDELT: {len(gdelt)} days | {gdelt.index[0].date()} to {gdelt.index[-1].date()}")
     return gdelt
@@ -128,6 +125,8 @@ def build_samples(lookback: int = LOOKBACK_WINDOW):
     Each sample: (prices_window, gdelt_today, adjacency_today, target_prices)
     """
     prices = pd.read_parquet(DATA_DIR / "aligned_prices.parquet")
+    # Restrict to model window (all 5 series are complete from TRAIN_START)
+    prices = prices.loc[TRAIN_START:].dropna()
     adj_df = load_adjacency()
     gdelt  = load_gdelt()
 
@@ -158,7 +157,7 @@ def build_samples(lookback: int = LOOKBACK_WINDOW):
     df = pd.DataFrame(records)
     out = DATA_DIR / f"dataset_k{lookback}.parquet"
     df.to_parquet(out)
-    print(f"Saved {len(df)} samples → {out}")
+    print(f"Saved {len(df)} samples -> {out}")
     return df
 
 

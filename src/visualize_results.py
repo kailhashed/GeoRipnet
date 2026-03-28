@@ -1,19 +1,4 @@
-"""
-visualize_results.py
-====================
-GeoRipNet — Metrics, Evaluation, and Visualization Script.
 
-Modes:
-  REAL MODE      — checkpoint exists → load model, run test inference, plot real data
-  SYNTHETIC MODE — no checkpoint     → generate plausible synthetic data, watermark figures
-
-Run from project root:
-  cd F:/Kailash/srm/research/georipnet
-  python src/visualize_results.py
-
-All figures saved to results/figures/ at dpi=150.
-Metrics saved to results/metrics_summary.json.
-"""
 
 import sys
 import os
@@ -38,19 +23,20 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from config import (
     CHECKPOINT_DIR, DATA_DIR, RESULTS_DIR,
-    N_NODES, NODES, TEST_START
+    N_NODES, NODES, TEST_START, TEST_DIR, TRAIN_DIR,
+    LOOKBACK_WINDOW
 )
 
 FIGURES_DIR = RESULTS_DIR / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-CKPT_PATH = CHECKPOINT_DIR / "georipnet_k20_best.pt"
+CKPT_PATH = CHECKPOINT_DIR / "georipnet_A5_k20_best.pt"
 HISTORY_PATH = RESULTS_DIR / "history_k20.json"
 METRICS_OUT  = RESULTS_DIR / "metrics_summary.json"
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 BENCH_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
-BENCHMARK_LABELS = NODES   # ["WTI", "Brent", "OPEC", "Urals", "Indian"]
+BENCHMARK_LABELS = NODES   # ["WTI", "Brent", "OPEC", "ESPO", "Indian"]
 
 DPI = 150
 
@@ -78,7 +64,8 @@ def save(fig, name, synthetic=False):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def run_real_inference():
-    """Load model and run on test set. Returns (dates, actuals, preds, gate_vals)."""
+    """Load model and run on test set. Returns (dates, actuals, preds, gate_vals).
+    Actuals and preds are returned in original USD/bbl scale (denormalized)."""
     import torch
     from torch.utils.data import DataLoader
     from model import GeoRipNet
@@ -87,43 +74,53 @@ def run_real_inference():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[REAL MODE] Device: {device}")
 
-    samples = pd.read_parquet(DATA_DIR / "dataset_k20.parquet")
-    test_ds = OilDataset(samples, "test")
+    # Load checkpoint first to get normalization stats
+    ckpt  = torch.load(CKPT_PATH, map_location=device, weights_only=False)
+    lookback = ckpt.get("lookback", LOOKBACK_WINDOW)
+
+    # Get normalization stats from checkpoint (saved during training)
+    price_mean = np.array(ckpt["price_mean"], dtype=np.float32)
+    price_std  = np.array(ckpt["price_std"],  dtype=np.float32)
+    print(f"  Normalization stats from checkpoint: mean={price_mean}, std={price_std}")
+
+    # Load test data using the split-based OilDataset
+    test_ds = OilDataset(TEST_DIR, lookback=lookback,
+                         price_mean=price_mean, price_std=price_std)
     test_dl = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=0)
 
-    ckpt  = torch.load(CKPT_PATH, map_location=device)
-    model = GeoRipNet(lookback=20).to(device)
+    # Extract dates for valid test samples (after lookback window)
+    dates = pd.to_datetime(test_ds.target_dates[
+        [test_ds.valid_indices[i] for i in range(len(test_ds))]
+    ])
+    print(f"  Test samples: {len(test_ds)} | Date range: {dates[0].date()} → {dates[-1].date()}")
+
+    model = GeoRipNet(lookback=lookback).to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
-    # grab the date column for test rows
-    df_test = samples.copy()
-    df_test["date"] = pd.to_datetime(df_test["date"])
-    df_test = df_test[df_test["date"] >= TEST_START].reset_index(drop=True)
-    dates = pd.to_datetime(df_test["date"].values)
-
     all_preds  = []
-    all_actual = []
     all_gates  = []
 
     with torch.no_grad():
-        for prices, gdelt, adj, target in test_dl:
+        for prices, gdelt, adj, target, target_dir in test_dl:
             prices  = prices.to(device)
             gdelt_t = gdelt.to(device)
             adj_t   = adj.to(device)
 
-            pred = model(prices, gdelt_t, adj_t)          # [B, 5]
-            gate = torch.sigmoid(
-                model.edge_gating.W_g(gdelt_t).squeeze(-1)
-            )                                              # [B, 5, 5]
+            pred, _ = model(prices, gdelt_t, adj_t)          # [B, 5] log returns
+            _, gate_seq = model.edge_gating(gdelt_t, adj_t)
+            gate = gate_seq[:, -1, :, :]                     # [B, 5, 5]
 
             all_preds.append(pred.cpu().numpy())
-            all_actual.append(target.numpy())
             all_gates.append(gate.cpu().numpy())
 
-    preds  = np.concatenate(all_preds,  axis=0)   # [T, 5]
-    actual = np.concatenate(all_actual, axis=0)   # [T, 5]
-    gates  = np.concatenate(all_gates,  axis=0)   # [T, 5, 5]
+    log_ret_preds = np.concatenate(all_preds,  axis=0)   # [T, 5] (normalized log returns)
+    gates  = np.concatenate(all_gates,  axis=0)          # [T, 5, 5]
+
+    # Reconstruct real absolute prices
+    preds_norm = test_ds.last_norm + log_ret_preds
+    preds  = preds_norm * price_std + price_mean
+    actual = test_ds.y_raw
 
     return dates, actual, preds, gates
 
@@ -147,7 +144,7 @@ def make_synthetic_data():
     noise   = rng.normal(0, 2.5, (n_days, N_NODES))
     preds   = actual + noise
 
-    # Synthetic gate values — Urals→India (edge [3,4]) rises post Feb-24 2022
+    # Synthetic gate values — ESPO→India (edge [3,4]) rises post Feb-24 2022
     gates   = rng.uniform(0.3, 0.6, (n_days, N_NODES, N_NODES))
     invasion_idx = np.searchsorted(dates, pd.Timestamp("2022-02-24"))
     gates[invasion_idx:, 3, 4] = rng.uniform(0.65, 0.9,
@@ -370,22 +367,22 @@ def fig_metrics_rolling(dates, actual, preds, synthetic):
 # 5.  FIGURES — MODEL INTERNALS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def fig_gate_urals_india(dates, gates, synthetic):
+def fig_gate_espo_india(dates, gates, synthetic):
     """
-    THE key paper figure: Gate[3,4] (Urals→India) over test period.
+    THE key paper figure: Gate[3,4] (ESPO→India) over test period.
     Red dashed line marks 2022-02-24 (Russia invasion of Ukraine).
     """
-    gate_series = gates[:, 3, 4]   # Urals→India
+    gate_series = gates[:, 3, 4]   # ESPO→India
 
     fig, ax = plt.subplots(figsize=(13, 4))
     fig.suptitle(
-        "GeoRipNet — Geopolitical Edge Gate: Urals → Indian Basket\n"
-        "(Gate[Urals→India] over Test Period)",
+        "GeoRipNet — Geopolitical Edge Gate: ESPO → Indian Basket\n"
+        "(Gate[ESPO→India] over Test Period)",
         fontsize=13
     )
 
     ax.plot(dates, gate_series, color="#d62728", lw=1.4, alpha=0.9,
-            label="Gate[Urals→India]")
+            label="Gate[ESPO→India]")
 
     invasion = pd.Timestamp("2022-02-24")
     if invasion >= pd.Timestamp(dates[0]):
@@ -402,7 +399,7 @@ def fig_gate_urals_india(dates, gates, synthetic):
     ax.legend(fontsize=9)
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%b %Y"))
     ax.grid(True, alpha=0.3)
-    return save(fig, "fig_gate_urals_india.png", synthetic)
+    return save(fig, "fig_gate_espo_india.png", synthetic)
 
 
 def fig_gate_all_edges(gates, synthetic):
@@ -464,14 +461,25 @@ def fig_attention_weights(gates, synthetic):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _load_ablation_results():
-    """Try to load ablation results from results/ablation_*.json."""
+    """Try to load ablation results from results/eval_*.json and baselines."""
     ablations = {}
-    for path in sorted(RESULTS_DIR.glob("ablation_*.json")):
-        key = path.stem.replace("ablation_", "")
+    for path in sorted(RESULTS_DIR.glob(f"eval_*_k{LOOKBACK_WINDOW}.json")):
+        key = path.stem.replace("eval_", "").replace(f"_k{LOOKBACK_WINDOW}", "")
         try:
             ablations[key] = json.load(open(path))
         except Exception:
             pass
+            
+    # Also load GCN and LSTM from baselines if they exist
+    baseline_path = RESULTS_DIR / f"baselines_k{LOOKBACK_WINDOW}.json"
+    if baseline_path.exists():
+        try:
+            b_data = json.load(open(baseline_path))
+            if "GCN" in b_data: ablations["gcn"] = b_data["GCN"]
+            if "LSTM" in b_data: ablations["lstm"] = b_data["LSTM"]
+        except Exception:
+            pass
+            
     return ablations
 
 
@@ -488,8 +496,9 @@ def fig_ablation_mae(metrics_full, synthetic):
     # Build per-ablation, per-benchmark MAE table
     mae_table = {}
     for abl in ablation_names:
-        if abl in ablation_data and "metrics" in ablation_data[abl]:
-            mae_table[abl] = [ablation_data[abl]["metrics"].get(n, {}).get("MAE", np.nan)
+        if abl in ablation_data:
+            # handle both {"MAE": {"WTI": 1}} from evaluate or {"MAE": {"WTI": 1}} from baselines
+            mae_table[abl] = [ablation_data[abl].get("MAE", {}).get(n, np.nan)
                               for n in BENCHMARK_LABELS]
         elif abl == "full":
             mae_table[abl] = [metrics_full[n]["MAE"] for n in BENCHMARK_LABELS]
@@ -535,8 +544,8 @@ def fig_ablation_rmse(metrics_full, synthetic):
 
     rmse_table = {}
     for abl in ablation_names:
-        if abl in ablation_data and "metrics" in ablation_data[abl]:
-            rmse_table[abl] = [ablation_data[abl]["metrics"].get(n, {}).get("RMSE", np.nan)
+        if abl in ablation_data:
+            rmse_table[abl] = [ablation_data[abl].get("RMSE", {}).get(n, np.nan)
                                for n in BENCHMARK_LABELS]
         elif abl == "full":
             rmse_table[abl] = [metrics_full[n]["RMSE"] for n in BENCHMARK_LABELS]
@@ -675,8 +684,8 @@ def main():
     generated.append(("fig_metrics_rolling.png",         p))
 
     # — Model internals —
-    p = fig_gate_urals_india(dates, gates, synthetic)
-    generated.append(("fig_gate_urals_india.png",        p))
+    p = fig_gate_espo_india(dates, gates, synthetic)
+    generated.append(("fig_gate_espo_india.png",         p))
 
     p = fig_gate_all_edges(gates, synthetic)
     generated.append(("fig_gate_all_edges.png",          p))

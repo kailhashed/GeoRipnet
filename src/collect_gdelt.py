@@ -3,7 +3,7 @@ collect_gdelt.py
 Downloads GDELT event data and builds daily 5x5x3 tensors.
 
 Node map:
-  0=WTI/USA, 1=Brent/GBR+NOR, 2=OPEC/SAU, 3=Urals/RUS, 4=Indian/IND
+  0=WTI/USA, 1=Brent/GBR+NOR, 2=OPEC/SAU, 3=ESPO/RUS, 4=Indian/IND
 
 URL format (confirmed working):
   http://data.gdeltproject.org/events/YYYYMMDD.export.CSV.zip

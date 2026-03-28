@@ -29,9 +29,9 @@ ADJ_FILE    = DATA_DIR / "uncomtrade" / "adjacency_monthly.parquet"
 ADJ_CSV     = DATA_DIR / "uncomtrade" / "adjacency_monthly_readable.csv"
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-NODES       = ["WTI", "Brent", "OPEC", "Urals", "Indian"]
-NODE_LABELS = ["WTI\n(USA)", "Brent\n(GBR/NOR)", "OPEC\n(SAU)", "Urals\n(RUS)", "Indian\n(IND)"]
-NODE_SHORT  = ["WTI", "Brent", "OPEC", "Urals", "Indian"]
+NODES       = ["WTI", "Brent", "OPEC", "ESPO", "Indian"]
+NODE_LABELS = ["WTI\n(USA)", "Brent\n(GBR/NOR)", "OPEC\n(SAU)", "ESPO\n(RUS)", "Indian\n(IND)"]
+NODE_SHORT  = ["WTI", "Brent", "OPEC", "ESPO", "Indian"]
 
 MODEL_START = "2010-01-01"
 MODEL_END   = "2026-03-23"
@@ -44,7 +44,7 @@ COLORS = {
     "WTI":    "#1f77b4",
     "Brent":  "#ff7f0e",
     "OPEC":   "#2ca02c",
-    "Urals":  "#d62728",
+    "ESPO":   "#d62728",
     "Indian": "#9467bd",
 }
 NODE_COLORS = [COLORS[n] for n in NODES]
@@ -428,7 +428,7 @@ print("[12/17] fig_price_spread_analysis.png")
 try:
     spreads = {
         "Brent – WTI":    prices["Brent"] - prices["WTI"],
-        "Brent – Urals":  prices["Brent"] - prices["Urals"],
+        "Brent – ESPO":   prices["Brent"] - prices["ESPO"],
         "Brent – Indian": prices["Brent"] - prices["Indian"],
     }
     spread_colors = ["#1a6fba", "#c0392b", "#8e44ad"]
@@ -494,7 +494,7 @@ try:
     rus_ind = []
     for period in adj_df["period"]:
         mat = get_matrix(period)
-        rus_ind.append(mat[3, 4])   # row 3 = Urals/RUS, col 4 = Indian/IND
+        rus_ind.append(mat[3, 4])   # row 3 = ESPO/RUS, col 4 = Indian/IND
 
     fig, ax = plt.subplots(figsize=(13, 5))
     ax.plot(adj_dates, rus_ind, color="#c0392b", linewidth=2.0, marker="o",
@@ -531,7 +531,7 @@ try:
         0: "#1f77b4",  # WTI
         1: "#ff7f0e",  # Brent
         2: "#2ca02c",  # OPEC
-        3: "#d62728",  # Urals
+        3: "#d62728",  # ESPO
         4: "#9467bd",  # Indian
     }
 
@@ -643,7 +643,7 @@ try:
         0: (0, 1),   # WTI top
         1: (1, 0.5), # Brent right
         2: (0.6, -0.8),  # OPEC lower-right
-        3: (-0.6, -0.8), # Urals lower-left
+        3: (-0.6, -0.8), # ESPO lower-left
         4: (-1, 0.5),    # Indian left
     }
 

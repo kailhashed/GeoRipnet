@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "WebSearch",
       "Bash(python3:*)",
@@ -29,7 +30,10 @@
       "WebFetch(domain:www.geomesa.org)",
       "Bash(python:*)",
       "Bash(rm data/uncomtrade/TradeData_11_3_2025_1_10_46.csv data/uncomtrade/TradeData_11_3_2025_1_11_27.csv data/uncomtrade/TradeData_11_3_2025_1_11_35.csv data/uncomtrade/TradeData_11_3_2025_1_11_51.csv data/uncomtrade/TradeData_11_3_2025_1_12_15.csv data/uncomtrade/TradeData_11_3_2025_1_12_2.csv data/uncomtrade/TradeData_11_3_2025_1_12_29.csv data/uncomtrade/TradeData_11_3_2025_1_12_43.csv data/uncomtrade/TradeData_2010_2017.csv data/uncomtrade/adjacency_monthly.parquet data/uncomtrade/adjacency_monthly_readable.csv)",
-      "Bash(rm data/uncomtrade/2010.csv data/uncomtrade/2011.csv data/uncomtrade/2012.csv data/uncomtrade/2013.csv data/uncomtrade/2014.csv data/uncomtrade/2015.csv data/uncomtrade/2016.csv data/uncomtrade/2017.csv data/uncomtrade/2018.csv data/uncomtrade/2019.csv data/uncomtrade/2020.csv data/uncomtrade/2021.csv data/uncomtrade/2022.csv data/uncomtrade/2023.csv data/uncomtrade/2024.csv data/uncomtrade/2025.csv data/uncomtrade/2026.csv)"
+      "Bash(rm data/uncomtrade/2010.csv data/uncomtrade/2011.csv data/uncomtrade/2012.csv data/uncomtrade/2013.csv data/uncomtrade/2014.csv data/uncomtrade/2015.csv data/uncomtrade/2016.csv data/uncomtrade/2017.csv data/uncomtrade/2018.csv data/uncomtrade/2019.csv data/uncomtrade/2020.csv data/uncomtrade/2021.csv data/uncomtrade/2022.csv data/uncomtrade/2023.csv data/uncomtrade/2024.csv data/uncomtrade/2025.csv data/uncomtrade/2026.csv)",
+      "Bash(grep -i baseline find \"F:/Kailash/srm/research/georipnet/\" -name \"baselines*\" -not -path \"*/.git/*\")",
+      "Bash(xxd)",
+      "Skill(update-config)"
     ]
   }
 }

@@ -11,7 +11,7 @@ from pathlib import Path
 from config import COMTRADE_DIR, N_NODES
 
 NODE_MAP   = {'USA': 0, 'GBR': 1, 'NOR': 1, 'SAU': 2, 'RUS': 3, 'IND': 4}
-NODE_NAMES = {0: 'WTI/USA', 1: 'Brent/UK+NOR', 2: 'OPEC/SAU', 3: 'Urals/RUS', 4: 'Indian/IND'}
+NODE_NAMES = {0: 'WTI/USA', 1: 'Brent/UK+NOR', 2: 'OPEC/SAU', 3: 'ESPO/RUS', 4: 'Indian/IND'}
 VALID_ISO  = set(NODE_MAP.keys())
 BILATERAL  = COMTRADE_DIR / "comtrade_bilateral.csv"
 OUT_PARQ   = COMTRADE_DIR / "adjacency_monthly.parquet"

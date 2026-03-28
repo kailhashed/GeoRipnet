@@ -2,6 +2,7 @@
 Central configuration for GeoRipNet.
 All paths, constants, and hyperparameters live here.
 """
+import torch
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -15,6 +16,11 @@ RAW_CACHE_DIR   = GDELT_DIR / "raw_cache"
 CHECKPOINT_DIR  = ROOT / "checkpoints"
 RESULTS_DIR     = ROOT / "results"
 
+# Pre-split data directories
+TRAIN_DIR = DATA_DIR / "train"
+VAL_DIR   = DATA_DIR / "val"
+TEST_DIR  = DATA_DIR / "test"
+
 for d in [CHECKPOINT_DIR, RESULTS_DIR, RAW_CACHE_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
@@ -23,17 +29,17 @@ PRICE_FILES = {
     "WTI":    PRICE_DIR / "wti_daily.csv",
     "Brent":  PRICE_DIR / "brent_daily.csv",
     "OPEC":   PRICE_DIR / "opec_daily.csv",
-    "Urals":  PRICE_DIR / "urals_daily.csv",
+    "ESPO":   PRICE_DIR / "urals_daily.csv",
     "Indian": PRICE_DIR / "indian_basket_daily.csv",
 }
 
 # Node order must match price files and Comtrade adjacency matrix
-NODES = ["WTI", "Brent", "OPEC", "Urals", "Indian"]
+NODES = ["WTI", "Brent", "OPEC", "ESPO", "Indian"]
 NODE_COUNTRIES = {
     "WTI":    ["USA"],
     "Brent":  ["GBR", "NOR"],
     "OPEC":   ["SAU"],
-    "Urals":  ["RUS"],
+    "ESPO":   ["RUS"],
     "Indian": ["IND"],
 }
 N_NODES = 5
@@ -47,7 +53,7 @@ GDELT_CAMEO_CODES = ["13", "17", "18", "19", "20"]
 GDELT_CHANNELS    = ["GoldsteinScale", "AvgTone", "NumMentions"]
 N_CHANNELS        = 3
 
-# ── Dataset split ─────────────────────────────────────────────────────────────
+# ── Dataset split dates ──────────────────────────────────────────────────────
 TRAIN_START = "2010-01-01"
 TRAIN_END   = "2019-12-31"
 VAL_START   = "2020-01-01"
@@ -64,5 +70,16 @@ DROPOUT         = 0.1
 # ── Training ──────────────────────────────────────────────────────────────────
 BATCH_SIZE      = 64
 LR              = 1e-3
-EPOCHS          = 100
-PATIENCE        = 10        # early stopping patience
+WEIGHT_DECAY    = 1e-5
+EPOCHS          = 200
+PATIENCE        = 20        # early stopping patience
+
+# ── Device ────────────────────────────────────────────────────────────────────
+def get_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+DEVICE = get_device()

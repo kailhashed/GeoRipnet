@@ -1,141 +1,292 @@
 """
 train.py
-Training loop for GeoRipNet.
-
-Usage:
-  python train.py --lookback 20
-  python train.py --lookback 10 --epochs 150
+Training script for the main GeoRipNet model and its ablations.
 """
 import sys
-import argparse, json
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
+import json
+import argparse
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from pathlib import Path
+import pywt
+
+# Add src to sys.path
+sys.path.insert(0, str(Path(__file__).parent))
+
 from config import (
-    DATA_DIR, CHECKPOINT_DIR, RESULTS_DIR,
-    TRAIN_START, TRAIN_END, VAL_START, VAL_END,
-    BATCH_SIZE, LR, EPOCHS, PATIENCE, LOOKBACK_WINDOW, N_NODES
+    DATA_DIR, RESULTS_DIR, CHECKPOINT_DIR,
+    TRAIN_DIR, VAL_DIR, TEST_DIR, NODES,
+    N_NODES, LOOKBACK_WINDOW,
+    BATCH_SIZE, LR, EPOCHS, PATIENCE,
+    DEVICE, WEIGHT_DECAY
 )
 from model import GeoRipNet
 
+try:
+    from baselines import sliding_windows, metrics
+except ImportError:
+    raise ImportError("baselines.py must be in the same directory as train.py")
 
-# ── Dataset ───────────────────────────────────────────────────────────────────
+
+def apply_wavelet_smoothing(data_array, wavelet='db2', level=2):
+    smoothed = np.zeros_like(data_array)
+    for i in range(data_array.shape[1]):
+        signal = data_array[:, i]
+        coeffs = pywt.wavedec(signal, wavelet, level=level)
+        coeffs[-1] = np.zeros_like(coeffs[-1])  # Zero out highest freq noise
+        smoothed[:, i] = pywt.waverec(coeffs, wavelet)[:len(signal)]
+    return smoothed.astype(np.float32)
 
 class OilDataset(Dataset):
-    def __init__(self, samples: pd.DataFrame, split: str,
-                 train_start=TRAIN_START, train_end=TRAIN_END,
-                 val_start=VAL_START, val_end=VAL_END):
-        df = samples.copy()
-        df["date"] = pd.to_datetime(df["date"])
-        if split == "train":
-            df = df[(df["date"] >= train_start) & (df["date"] <= train_end)]
-        elif split == "val":
-            df = df[(df["date"] >= val_start) & (df["date"] <= val_end)]
-        else:  # test
-            from config import TEST_START
-            df = df[df["date"] >= TEST_START]
-        self.data = df.reset_index(drop=True)
+    """Dataset for GeoRipNet returning prices, gdelt, adjacency, and targets."""
+    def __init__(self, split_dir, lookback=LOOKBACK_WINDOW, price_mean=None, price_std=None):
+        split_dir = Path(split_dir)
+        prices_df = pd.read_parquet(split_dir / "prices.parquet")
+        prices_df.index = pd.to_datetime(prices_df.index)
+        prices_df = prices_df.sort_index()
+        
+        raw_prices = prices_df.values.astype(np.float32)
+
+        # Normalise inputs — mean/std from training set
+        if price_mean is None:
+            self.price_mean = raw_prices.mean(axis=0).astype(np.float32)
+            self.price_std  = raw_prices.std(axis=0).clip(min=1.0).astype(np.float32)
+        else:
+            self.price_mean = price_mean
+            self.price_std  = price_std
+
+        # Apply Wavelet Smoothing to inputs before normalization
+        smoothed_prices = apply_wavelet_smoothing(raw_prices, wavelet='db2', level=2)
+        prices_norm = (smoothed_prices - self.price_mean) / self.price_std
+
+        # Inputs: normalised lookback windows
+        self.X_prices, _ = sliding_windows(prices_norm, lookback)
+        _, y_norm = sliding_windows(prices_norm, lookback)
+
+        # Targets: normalised price DIFFERENCE = (P_{t+1} - P_t) / std
+        # Avoids log(negative) NaN (WTI went negative Apr 2020).
+        # Forces the model to predict changes, not levels.
+        last_norm = prices_norm[lookback - 1: -1]            # P(t) normalised
+        self.y_returns = (y_norm - last_norm).astype(np.float32)  # normalised Δ
+        self.y_dir     = (self.y_returns > 0).astype(np.float32)
+
+        # Store for evaluation in real price space
+        self.y_raw  = raw_prices[lookback:]                   # P(t+1) real
+        self.last_norm = last_norm                            # P(t) normalised
+
+        self.target_dates   = prices_df.index[lookback:]
+        self.last_obs_dates = prices_df.index[lookback - 1: -1]
+        self.valid_indices  = np.arange(len(self.target_dates))
+        
+        adj_df = pd.read_parquet(split_dir / "adjacency.parquet")
+        adj_cols = [f"col_{r}_{c}" for r in range(N_NODES) for c in range(N_NODES)]
+        adjs = []
+        for d in self.last_obs_dates:
+            period = d.year * 100 + d.month
+            row = adj_df[adj_df["period"] == period]
+            if row.empty:
+                row = adj_df[adj_df["period"] <= period].iloc[-1:]
+            if row.empty:
+                adjs.append(np.eye(N_NODES, dtype=np.float32) / N_NODES)
+            else:
+                adjs.append(row[adj_cols].values.reshape(N_NODES, N_NODES))
+        self.adjs = np.array(adjs, dtype=np.float32)
+        
+        # Load GDELT from split folder — vectorized, no iterrows
+        gdelt_raw = pd.read_parquet(split_dir / "gdelt.parquet")
+        gdelt_raw["date"] = pd.to_datetime(gdelt_raw["date"])
+        gdelt_raw = gdelt_raw[gdelt_raw["from_node"] != gdelt_raw["to_node"]].copy()
+        gdelt_dates = sorted(gdelt_raw["date"].unique())
+        date_to_idx_g = {d: i for i, d in enumerate(gdelt_dates)}
+        row_idx_g = gdelt_raw["date"].map(date_to_idx_g).values
+        fi_g = gdelt_raw["from_node"].values.astype(int)
+        ti_g = gdelt_raw["to_node"].values.astype(int)
+        gdelt_arr = np.zeros((len(gdelt_dates), 3 * N_NODES * N_NODES), dtype=np.float32)
+        for ch_i, ch in enumerate(["GoldsteinScale", "AvgTone", "NumMentions"]):
+            flat_idx = ch_i * N_NODES * N_NODES + fi_g * N_NODES + ti_g
+            gdelt_arr[row_idx_g, flat_idx] = gdelt_raw[ch].values.astype(np.float32)
+        gdelt_wide = pd.DataFrame(gdelt_arr, index=pd.DatetimeIndex(gdelt_dates))
+        gdelt_flat_df = gdelt_wide.reindex(prices_df.index, method="ffill").fillna(0.0)
+
+        gdelt_flat = gdelt_flat_df.values
+        gdelt_tensor = gdelt_flat.reshape(-1, 3, N_NODES, N_NODES).transpose(0, 2, 3, 1)
+        
+        gdelt_seqs = []
+        for i in range(lookback, len(gdelt_tensor)):
+            gdelt_seqs.append(gdelt_tensor[i - lookback:i])
+        self.gdelt = np.array(gdelt_seqs, dtype=np.float32)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.X_prices)
 
-    def __getitem__(self, idx):
-        row = self.data.iloc[idx]
-        prices   = torch.tensor(row["prices_window"], dtype=torch.float32)   # [k, 5]
-        gdelt    = torch.tensor(row["gdelt_tensor"], dtype=torch.float32).view(5, 5, 3)
-        adj      = torch.tensor(row["adjacency"], dtype=torch.float32)       # [5, 5]
-        target   = torch.tensor(row["target"], dtype=torch.float32)          # [5]
-        return prices, gdelt, adj, target
+    def __getitem__(self, i):
+        return (
+            torch.tensor(self.X_prices[i]),       # [k, 5] normalised price window
+            torch.tensor(self.gdelt[i]),           # [k, 5, 5, 3] GDELT tensor
+            torch.tensor(self.adjs[i]),            # [5, 5] adjacency
+            torch.tensor(self.y_returns[i]),       # [5]   log return target
+            torch.tensor(self.y_dir[i]),           # [5]   direction label (0/1)
+        )
 
 
-# ── Training ──────────────────────────────────────────────────────────────────
+def evaluate_and_save(model_name, y_true, y_pred, test_dates_window, lookback):
+    res_overall = metrics(y_true, y_pred)
+    calm_mask = test_dates_window < pd.to_datetime("2022-02-24")
+    crisis_mask = test_dates_window >= pd.to_datetime("2022-02-24")
+    
+    res_calm = metrics(y_true[calm_mask], y_pred[calm_mask]) if calm_mask.sum() > 0 else {}
+    res_crisis = metrics(y_true[crisis_mask], y_pred[crisis_mask]) if crisis_mask.sum() > 0 else {}
+        
+    full_res = {
+        "overall": res_overall,
+        "calm": res_calm,
+        "crisis": res_crisis
+    }
+    
+    out_dir = RESULTS_DIR / model_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    with open(out_dir / f"metrics_k{lookback}.json", "w") as f:
+        json.dump(full_res, f, indent=2)
+        
+    df_pred = pd.DataFrame(y_pred, index=test_dates_window, columns=NODES)
+    df_pred.to_csv(out_dir / f"predictions_k{lookback}.csv")
+    return res_overall
 
-def train(lookback: int = LOOKBACK_WINDOW, epochs: int = EPOCHS):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}")
 
-    samples = pd.read_parquet(DATA_DIR / f"dataset_k{lookback}.parquet")
+def run_training_ablation(lookback: int, ablation: str):
+    print("=" * 60)
+    print(f"Training GeoRipNet [{ablation}] | lookback={lookback} | device={DEVICE}")
+    print("=" * 60)
 
-    train_ds = OilDataset(samples, "train")
-    val_ds   = OilDataset(samples, "val")
-    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=0)
-    val_dl   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+    tr_ds  = OilDataset(TRAIN_DIR, lookback)
+    val_ds = OilDataset(VAL_DIR, lookback, price_mean=tr_ds.price_mean, price_std=tr_ds.price_std)
+    te_ds  = OilDataset(TEST_DIR, lookback, price_mean=tr_ds.price_mean, price_std=tr_ds.price_std)
 
-    print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
+    tr_dl  = DataLoader(tr_ds,  batch_size=BATCH_SIZE, shuffle=True,  num_workers=0)
+    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+    te_dl  = DataLoader(te_ds,  batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-    model     = GeoRipNet(lookback=lookback).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
-    criterion = nn.MSELoss()
+    model = GeoRipNet(lookback=lookback, ablation=ablation).to(DEVICE)
+    opt  = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    sch  = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, patience=5, factor=0.5)
+    mse_crit = nn.MSELoss()
+    bce_crit = nn.BCEWithLogitsLoss()
+    LAMBDA_DIR = 1.5   # drastically increased direction loss weight
 
-    best_val_loss = float("inf")
-    patience_counter = 0
-    history = {"train_loss": [], "val_loss": []}
+    best_loss    = float("inf")
+    patience_cnt = 0
+    best_state   = None
 
-    for epoch in range(1, epochs + 1):
-        # Train
+    for epoch in range(1, EPOCHS + 1):
         model.train()
-        train_losses = []
-        for prices, gdelt, adj, target in train_dl:
-            prices, gdelt, adj, target = (
-                prices.to(device), gdelt.to(device),
-                adj.to(device), target.to(device)
-            )
-            optimizer.zero_grad()
-            pred = model(prices, gdelt, adj)
-            loss = criterion(pred, target)
+        tr_losses = []
+        for X, gdelt_batch, adj, y_ret, y_dir in tr_dl:
+            X         = X.to(DEVICE)
+            gdelt_batch = gdelt_batch.to(DEVICE)
+            adj       = adj.to(DEVICE)
+            y_ret     = y_ret.to(DEVICE)
+            y_dir     = y_dir.to(DEVICE)
+            opt.zero_grad()
+            log_ret_hat, dir_hat = model(X, gdelt_batch, adj)
+            loss = mse_crit(log_ret_hat, y_ret) + LAMBDA_DIR * bce_crit(dir_hat, y_dir)
             loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            train_losses.append(loss.item())
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            opt.step()
+            tr_losses.append(loss.item())
 
-        # Validate
         model.eval()
         val_losses = []
         with torch.no_grad():
-            for prices, gdelt, adj, target in val_dl:
-                prices, gdelt, adj, target = (
-                    prices.to(device), gdelt.to(device),
-                    adj.to(device), target.to(device)
-                )
-                pred = model(prices, gdelt, adj)
-                val_losses.append(criterion(pred, target).item())
+            for X, gdelt_batch, adj, y_ret, y_dir in val_dl:
+                X         = X.to(DEVICE)
+                gdelt_batch = gdelt_batch.to(DEVICE)
+                adj       = adj.to(DEVICE)
+                y_ret     = y_ret.to(DEVICE)
+                y_dir     = y_dir.to(DEVICE)
+                log_ret_hat, dir_hat = model(X, gdelt_batch, adj)
+                loss = mse_crit(log_ret_hat, y_ret) + LAMBDA_DIR * bce_crit(dir_hat, y_dir)
+                val_losses.append(loss.item())
 
-        train_loss = np.mean(train_losses)
-        val_loss   = np.mean(val_losses)
-        scheduler.step(val_loss)
-        history["train_loss"].append(train_loss)
-        history["val_loss"].append(val_loss)
+        tr_loss  = float(np.mean(tr_losses))
+        val_loss = float(np.mean(val_losses))
+        sch.step(val_loss)
 
-        if epoch % 10 == 0 or epoch == 1:
-            print(f"Epoch {epoch:3d} | Train: {train_loss:.4f} | Val: {val_loss:.4f}")
-
-        # Early stopping + checkpoint
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_counter = 0
-            ckpt = CHECKPOINT_DIR / f"georipnet_k{lookback}_best.pt"
-            torch.save({"epoch": epoch, "model_state": model.state_dict(),
-                        "val_loss": val_loss, "lookback": lookback}, ckpt)
+        if val_loss < best_loss:
+            best_loss = val_loss
+            best_state = {
+                "lookback":    lookback,
+                "price_mean":  tr_ds.price_mean.tolist(),
+                "price_std":   tr_ds.price_std.tolist(),
+                "model_state": {k: v.clone() for k, v in model.state_dict().items()}
+            }
+            patience_cnt = 0
+            torch.save(best_state, CHECKPOINT_DIR / f"georipnet_{ablation}_k{lookback}_best.pt")
         else:
-            patience_counter += 1
-            if patience_counter >= PATIENCE:
-                print(f"Early stopping at epoch {epoch}")
+            patience_cnt += 1
+            if patience_cnt >= PATIENCE:
+                print(f"  Early stop epoch {epoch} | best val {best_loss:.6f}")
                 break
 
-    # Save history
-    json.dump(history, open(RESULTS_DIR / f"history_k{lookback}.json", "w"))
-    print(f"Best val loss: {best_val_loss:.4f} | Checkpoint: {ckpt}")
-    return model, history
+        if epoch % 5 == 0 or epoch == 1:
+            print(f"  Epoch {epoch:3d} | Train: {tr_loss:.6f} | Val: {val_loss:.6f} | Pat: {patience_cnt}")
+
+    if best_state is not None:
+        model.load_state_dict(best_state["model_state"])
+
+    # ── Evaluation ────────────────────────────────────────────────────────────
+    print("\nEvaluating on Test Set...")
+    model.eval()
+    log_ret_preds = []
+    with torch.no_grad():
+        for X, gdelt_batch, adj, y_ret, y_dir in te_dl:
+            X           = X.to(DEVICE)
+            gdelt_batch = gdelt_batch.to(DEVICE)
+            adj         = adj.to(DEVICE)
+            log_ret_hat, _ = model(X, gdelt_batch, adj)
+            log_ret_preds.append(log_ret_hat.cpu().numpy())
+
+    log_ret_preds = np.vstack(log_ret_preds)   # [N_test, 5]  normalised Δ
+
+    # Reconstruct real prices: P_hat_norm = last_norm + Δ_pred → denormalise
+    preds_norm  = te_ds.last_norm + log_ret_preds
+    preds_real  = preds_norm * tr_ds.price_std + tr_ds.price_mean   # [N_test, 5]
+    y_true_real = te_ds.y_raw                                        # [N_test, 5]
+
+    # Directional accuracy on test set (from normalised Δ sign)
+    y_true_ret = te_ds.y_returns
+    da_per_node = (np.sign(log_ret_preds) == np.sign(y_true_ret)).mean(axis=0)
+    print(f"  Directional Accuracy per node: " +
+          " | ".join(f"{n}={100*da:.1f}%" for n, da in zip(NODES, da_per_node)))
+
+    res = evaluate_and_save(
+        f"GeoRipNet_{ablation}", y_true_real, preds_real,
+        te_ds.target_dates, lookback
+    )
+    print("\nTest Metrics (price space):")
+    for n in NODES:
+        print(f"  {n:8s} | RMSE={res['RMSE'][n]:.3f} | R²={res['R2'][n]:.4f} | DA={res['DA'][n]:.1f}%")
+    print(f"  {'MEAN':8s} | RMSE={res['RMSE_mean']:.3f} | R²={res['R2_mean']:.4f} | DA={res['DA_mean']:.1f}%")
+    return res
+
+
+def run_all(lookback: int):
+    # Standard complete run
+    for ab in ["A1", "A2", "A3", "A4", "A5"]:
+        run_training_ablation(lookback, ab)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lookback", type=int, default=LOOKBACK_WINDOW)
-    parser.add_argument("--epochs",   type=int, default=EPOCHS)
+    parser.add_argument("--ablation", type=str, default="A5")
+    parser.add_argument("--all", action="store_true")
     args = parser.parse_args()
-    train(lookback=args.lookback, epochs=args.epochs)
+    
+    if args.all:
+        run_all(args.lookback)
+    else:
+        run_training_ablation(args.lookback, args.ablation)
