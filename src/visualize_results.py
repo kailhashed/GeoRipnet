@@ -30,8 +30,8 @@ from config import (
 FIGURES_DIR = RESULTS_DIR / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-CKPT_PATH = CHECKPOINT_DIR / "georipnet_A5_k20_best.pt"
-HISTORY_PATH = RESULTS_DIR / "history_k20.json"
+CKPT_PATH = CHECKPOINT_DIR / f"georipnet_A5_k{LOOKBACK_WINDOW}_best.pt"
+HISTORY_PATH = RESULTS_DIR / f"history_k{LOOKBACK_WINDOW}.json"
 METRICS_OUT  = RESULTS_DIR / "metrics_summary.json"
 
 # ── Colour palette ────────────────────────────────────────────────────────────
