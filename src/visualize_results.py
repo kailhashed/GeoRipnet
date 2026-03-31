@@ -114,11 +114,11 @@ def run_real_inference():
             all_preds.append(pred.cpu().numpy())
             all_gates.append(gate.cpu().numpy())
 
-    log_ret_preds = np.concatenate(all_preds,  axis=0)   # [T, 5] (normalized log returns)
+    log_ret_preds = np.concatenate(all_preds,  axis=0)   # [T, len(H), 5] (normalized log returns)
     gates  = np.concatenate(all_gates,  axis=0)          # [T, 5, 5]
 
     # Reconstruct real absolute prices
-    preds_norm = test_ds.last_norm + log_ret_preds
+    preds_norm = np.expand_dims(test_ds.last_norm, 1) + log_ret_preds
     preds  = preds_norm * price_std + price_mean
     actual = test_ds.y_raw
 
@@ -129,22 +129,19 @@ def make_synthetic_data():
     """Generate plausible synthetic predictions for layout/testing."""
     print("[SYNTHETIC MODE] No checkpoint found — generating synthetic data.")
 
+    from config import HORIZONS
     rng   = np.random.default_rng(42)
     n_days = 500
     dates  = pd.date_range(TEST_START, periods=n_days, freq="B")
 
-    # Rough price levels for each benchmark
     base_prices = np.array([90.0, 92.0, 88.0, 85.0, 87.0])
 
-    # Random-walk actuals
-    shocks  = rng.normal(0, 1.2, (n_days, N_NODES))
-    actual  = base_prices + np.cumsum(shocks, axis=0)
+    shocks  = rng.normal(0, 1.2, (n_days, len(HORIZONS), N_NODES))
+    actual  = np.expand_dims(base_prices, (0, 1)) + np.cumsum(shocks, axis=0)
 
-    # Predictions = actual + correlated noise
-    noise   = rng.normal(0, 2.5, (n_days, N_NODES))
+    noise   = rng.normal(0, 2.5, (n_days, len(HORIZONS), N_NODES))
     preds   = actual + noise
 
-    # Synthetic gate values — ESPO→India (edge [3,4]) rises post Feb-24 2022
     gates   = rng.uniform(0.3, 0.6, (n_days, N_NODES, N_NODES))
     invasion_idx = np.searchsorted(dates, pd.Timestamp("2022-02-24"))
     gates[invasion_idx:, 3, 4] = rng.uniform(0.65, 0.9,
@@ -631,91 +628,91 @@ def main():
     synthetic = not CKPT_PATH.exists()
     mode_str  = "SYNTHETIC (no checkpoint)" if synthetic else "REAL (checkpoint loaded)"
     print(f"Mode: {mode_str}")
-    print(f"Figures dir: {FIGURES_DIR}")
-
+    
     # ── Get data ──────────────────────────────────────────────────────────────
     if synthetic:
-        dates, actual, preds, gates = make_synthetic_data()
+        dates, actual_all, preds_all, gates = make_synthetic_data()
     else:
         try:
-            dates, actual, preds, gates = run_real_inference()
+            dates, actual_all, preds_all, gates = run_real_inference()
         except Exception as e:
             print(f"  [WARNING] Real inference failed ({e}). Falling back to synthetic.")
             synthetic = True
-            dates, actual, preds, gates = make_synthetic_data()
+            dates, actual_all, preds_all, gates = make_synthetic_data()
 
+    from config import HORIZONS
     print(f"Test samples: {len(dates)} days  "
           f"({dates[0].date()} → {dates[-1].date()})")
 
-    # ── Metrics ───────────────────────────────────────────────────────────────
-    metrics = compute_metrics(actual, preds)
-    print_metrics(metrics)
+    for h_idx, h in enumerate(HORIZONS):
+        print(f"\n{'='*56}")
+        print(f"  HORIZON: {h} DAYS")
+        print(f"{'='*56}")
+        
+        actual = actual_all[:, h_idx, :]
+        preds = preds_all[:, h_idx, :]
+        
+        metrics = compute_metrics(actual, preds)
+        print_metrics(metrics)
 
-    # Save metrics JSON
-    json.dump(metrics, open(METRICS_OUT, "w"), indent=2)
-    print(f"Metrics saved → {METRICS_OUT}")
+        # Output paths for this horizon
+        h_dir_suffix = f"_h{h}"
+        metrics_out = RESULTS_DIR / f"metrics_summary{h_dir_suffix}.json"
+        
+        json.dump(metrics, open(metrics_out, "w"), indent=2)
+        print(f"Metrics saved → {metrics_out}")
+        
+        global FIGURES_DIR
+        FIGURES_DIR = RESULTS_DIR / f"figures{h_dir_suffix}"
+        FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"Figures dir: {FIGURES_DIR}")
 
-    # ── Generate all figures ──────────────────────────────────────────────────
-    generated = []
+        generated = []
+        print("\nGenerating figures...")
 
-    print("\nGenerating figures...")
+        p = fig_pred_vs_actual(dates, actual, preds, synthetic)
+        generated.append(("fig_pred_vs_actual_all.png",    p))
 
-    # — Prediction quality —
-    p = fig_pred_vs_actual(dates, actual, preds, synthetic)
-    generated.append(("fig_pred_vs_actual_all.png",    p))
+        p = fig_pred_residuals(dates, actual, preds, metrics, synthetic)
+        generated.append(("fig_pred_residuals.png",         p))
 
-    p = fig_pred_residuals(dates, actual, preds, metrics, synthetic)
-    generated.append(("fig_pred_residuals.png",         p))
+        p = fig_pred_error_distribution(actual, preds, synthetic)
+        generated.append(("fig_pred_error_distribution.png", p))
 
-    p = fig_pred_error_distribution(actual, preds, synthetic)
-    generated.append(("fig_pred_error_distribution.png", p))
+        p = fig_pred_scatter(actual, preds, metrics, synthetic)
+        generated.append(("fig_pred_scatter.png",            p))
 
-    p = fig_pred_scatter(actual, preds, metrics, synthetic)
-    generated.append(("fig_pred_scatter.png",            p))
+        p = fig_metrics_bar(metrics, synthetic)
+        generated.append(("fig_metrics_bar.png",             p))
 
-    # — Statistical metrics —
-    p = fig_metrics_bar(metrics, synthetic)
-    generated.append(("fig_metrics_bar.png",             p))
+        p = fig_metrics_r2_pearson(metrics, synthetic)
+        generated.append(("fig_metrics_r2_pearson.png",      p))
 
-    p = fig_metrics_r2_pearson(metrics, synthetic)
-    generated.append(("fig_metrics_r2_pearson.png",      p))
+        p = fig_metrics_rolling(dates, actual, preds, synthetic)
+        generated.append(("fig_metrics_rolling.png",         p))
 
-    p = fig_metrics_rolling(dates, actual, preds, synthetic)
-    generated.append(("fig_metrics_rolling.png",         p))
+        p = fig_gate_espo_india(dates, gates, synthetic)
+        generated.append(("fig_gate_espo_india.png",         p))
 
-    # — Model internals —
-    p = fig_gate_espo_india(dates, gates, synthetic)
-    generated.append(("fig_gate_espo_india.png",         p))
+        p = fig_gate_all_edges(gates, synthetic)
+        generated.append(("fig_gate_all_edges.png",          p))
 
-    p = fig_gate_all_edges(gates, synthetic)
-    generated.append(("fig_gate_all_edges.png",          p))
+        p = fig_attention_weights(gates, synthetic)
+        generated.append(("fig_attention_weights.png",       p))
 
-    p = fig_attention_weights(gates, synthetic)
-    generated.append(("fig_attention_weights.png",       p))
+        p = fig_ablation_mae(metrics, synthetic)
+        generated.append(("fig_ablation_mae.png",            p))
 
-    # — Ablation comparison —
-    p = fig_ablation_mae(metrics, synthetic)
-    generated.append(("fig_ablation_mae.png",            p))
+        p = fig_ablation_rmse(metrics, synthetic)
+        generated.append(("fig_ablation_rmse.png",           p))
 
-    p = fig_ablation_rmse(metrics, synthetic)
-    generated.append(("fig_ablation_rmse.png",           p))
+        if h == 1:
+            p = fig_training_history(synthetic)
+            if p: generated.append(("fig_training_history.png",   p))
 
-    # — Training history —
-    p = fig_training_history(synthetic)
-    if p:
-        generated.append(("fig_training_history.png",   p))
+        print(f"\n  Generated {len(generated)} figure(s) for horizon {h}")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
-    print(f"\n{'─'*55}")
-    print(f"  Generated {len(generated)} figure(s) [{mode_str}]")
-    print(f"{'─'*55}")
-    for name, path in generated:
-        print(f"  ✓  {name}")
-    print(f"{'─'*55}")
-    print(f"\nAll figures → {FIGURES_DIR}")
-    print(f"Metrics     → {METRICS_OUT}")
-    print()
-
+    print("\nFinished evaluation visualization pipelines.")
 
 if __name__ == "__main__":
     main()

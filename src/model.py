@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from config import N_NODES, N_CHANNELS, D_MODEL, N_HEADS_GAT, N_TRANSFORMER_LAYERS, DROPOUT
+from config import N_NODES, N_CHANNELS, D_MODEL, N_HEADS_GAT, N_TRANSFORMER_LAYERS, DROPOUT, HORIZONS
 
 class GeopoliticalEdgeGating(nn.Module):
     def __init__(self, ablation="A5"):
@@ -180,20 +180,20 @@ class GeoRipNet(nn.Module):
         )
 
         # Dual prediction heads
-        # Head 1: log return regression (target = log(P_{t+1}/P_t))
+        # Head 1: log return regression (target = log(P_{t+h}/P_t))
         self.price_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, 256),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(256, N_NODES),
+            nn.Linear(256, N_NODES * len(HORIZONS)),
         )
-        # Head 2: direction classification (logit for P_{t+1} > P_t)
+        # Head 2: direction classification (logit for P_{t+h} > P_t)
         self.dir_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, 64),
             nn.ReLU(),
-            nn.Linear(64, N_NODES),
+            nn.Linear(64, N_NODES * len(HORIZONS)),
         )
 
     def forward(
@@ -222,6 +222,11 @@ class GeoRipNet(nn.Module):
 
         z = self.temporal(seq, gate_seq)   # [B, d]
 
-        log_return = self.price_head(z)    # [B, N] — predicted log(P_{t+1}/P_t)
-        dir_logit  = self.dir_head(z)      # [B, N] — raw logit for up/down direction
+        log_return = self.price_head(z)    # [B, N_NODES * len(HORIZONS)] 
+        dir_logit  = self.dir_head(z)      # [B, N_NODES * len(HORIZONS)] 
+        
+        # Reshape to [B, len(HORIZONS), N_NODES]
+        log_return = log_return.view(B, len(HORIZONS), N_NODES)
+        dir_logit  = dir_logit.view(B, len(HORIZONS), N_NODES)
+        
         return log_return, dir_logit

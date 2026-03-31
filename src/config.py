@@ -61,10 +61,11 @@ VAL_END     = "2021-12-31"
 TEST_START  = "2022-01-01"
 
 # ── Model hyperparameters ─────────────────────────────────────────────────────
-LOOKBACK_WINDOW = 20        # k — ablated over {10, 20, 30}
-D_MODEL         = 64
-N_HEADS_GAT     = 2
-N_TRANSFORMER_LAYERS = 2
+LOOKBACK_WINDOW = 30        # k — updated to 30 for better structural anchoring
+HORIZONS        = [1, 7, 14, 30] 
+D_MODEL         = 128       # increased capacity for multi-horizon
+N_HEADS_GAT     = 4
+N_TRANSFORMER_LAYERS = 4    # deeper temporal reasoning
 DROPOUT         = 0.1
 
 # ── Training ──────────────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ BATCH_SIZE      = 64
 LR              = 1e-3
 WEIGHT_DECAY    = 1e-5
 EPOCHS          = 200
-PATIENCE        = 20        # early stopping patience
+PATIENCE        = 30        # more patience for harder horizons
 
 # ── Device ────────────────────────────────────────────────────────────────────
 def get_device():
