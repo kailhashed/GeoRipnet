@@ -42,7 +42,7 @@ def apply_wavelet_smoothing(data_array, wavelet='db2', level=2):
 
 class OilDataset(Dataset):
     """Dataset for GeoRipNet returning prices, gdelt, adjacency, and targets."""
-    def __init__(self, split_dir, lookback=LOOKBACK_WINDOW, price_mean=None, price_std=None):
+    def __init__(self, split_dir, lookback=LOOKBACK_WINDOW, price_mean=None, price_std=None, horizon=1, stride=1):
         split_dir = Path(split_dir)
         prices_df = pd.read_parquet(split_dir / "prices.parquet")
         prices_df.index = pd.to_datetime(prices_df.index)
@@ -62,18 +62,15 @@ class OilDataset(Dataset):
         smoothed_prices = apply_wavelet_smoothing(raw_prices, wavelet='db2', level=2)
         prices_norm = (smoothed_prices - self.price_mean) / self.price_std
 
-        from config import HORIZONS
-        max_h = max(HORIZONS)
-
         self.X_prices = []
         y_ret_list = []
         y_dir_list = []
         y_raw_list = []
         last_norm_list = []
-        target_dates = []
+        target_dates_seq = []
         last_obs_dates = []
 
-        for i in range(lookback, len(prices_norm) - max_h + 1):
+        for i in range(lookback, len(prices_norm) - horizon + 1, stride):
             t = i - 1
             self.X_prices.append(prices_norm[i - lookback : i])
             last_norm = prices_norm[t]
@@ -82,17 +79,17 @@ class OilDataset(Dataset):
             y_ret_h = []
             y_dir_h = []
             y_raw_h = []
-            for h in HORIZONS:
-                ret = prices_norm[t + h] - last_norm
+            for d in range(1, horizon + 1):
+                ret = prices_norm[t + d] - last_norm
                 y_ret_h.append(ret)
                 y_dir_h.append(ret > 0)
-                y_raw_h.append(raw_prices[t + h])
+                y_raw_h.append(raw_prices[t + d])
                 
             y_ret_list.append(y_ret_h)
             y_dir_list.append(y_dir_h)
             y_raw_list.append(y_raw_h)
             
-            target_dates.append(prices_df.index[t + 1])
+            target_dates_seq.append(prices_df.index[t + 1 : t + 1 + horizon])
             last_obs_dates.append(prices_df.index[t])
 
         self.X_prices = np.array(self.X_prices, dtype=np.float32)
@@ -101,7 +98,7 @@ class OilDataset(Dataset):
         self.y_raw     = np.array(y_raw_list, dtype=np.float32)
         self.last_norm = np.array(last_norm_list, dtype=np.float32)
 
-        self.target_dates   = pd.DatetimeIndex(target_dates)
+        self.target_dates_seq = target_dates_seq
         self.last_obs_dates = pd.DatetimeIndex(last_obs_dates)
         self.valid_indices  = np.arange(len(self.X_prices))
         
@@ -139,7 +136,7 @@ class OilDataset(Dataset):
         gdelt_tensor = gdelt_flat.reshape(-1, 3, N_NODES, N_NODES).transpose(0, 2, 3, 1)
         
         gdelt_seqs = []
-        for i in range(lookback, lookback + len(self.X_prices)):
+        for i in range(lookback, len(prices_norm) - horizon + 1, stride):
             gdelt_seqs.append(gdelt_tensor[i - lookback:i])
         self.gdelt = np.array(gdelt_seqs, dtype=np.float32)
 
@@ -157,31 +154,26 @@ class OilDataset(Dataset):
 
 
 def evaluate_and_save(model_name, y_true, y_pred, test_dates_window, lookback):
-    from config import HORIZONS
-    full_res = {}
-    
     out_dir = RESULTS_DIR / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    for h_idx, h in enumerate(HORIZONS):
-        y_true_h = y_true[:, h_idx, :]
-        y_pred_h = y_pred[:, h_idx, :]
+    # y_true and y_pred are already flattened: [N_total_steps, 5]
+    # test_dates_window is the flattened DatetimeIndex: [N_total_steps]
+    res_overall = metrics(y_true, y_pred)
+    calm_mask = test_dates_window < pd.to_datetime("2022-02-24")
+    crisis_mask = test_dates_window >= pd.to_datetime("2022-02-24")
+    
+    res_calm = metrics(y_true[calm_mask], y_pred[calm_mask]) if calm_mask.sum() > 0 else {}
+    res_crisis = metrics(y_true[crisis_mask], y_pred[crisis_mask]) if crisis_mask.sum() > 0 else {}
         
-        res_overall = metrics(y_true_h, y_pred_h)
-        calm_mask = test_dates_window < pd.to_datetime("2022-02-24")
-        crisis_mask = test_dates_window >= pd.to_datetime("2022-02-24")
-        
-        res_calm = metrics(y_true_h[calm_mask], y_pred_h[calm_mask]) if calm_mask.sum() > 0 else {}
-        res_crisis = metrics(y_true_h[crisis_mask], y_pred_h[crisis_mask]) if crisis_mask.sum() > 0 else {}
-            
-        full_res[f"h{h}"] = {
-            "overall": res_overall,
-            "calm": res_calm,
-            "crisis": res_crisis
-        }
-        
-        df_pred = pd.DataFrame(y_pred_h, index=test_dates_window, columns=NODES)
-        df_pred.to_csv(out_dir / f"predictions_k{lookback}_h{h}.csv")
+    full_res = {
+        "overall": res_overall,
+        "calm": res_calm,
+        "crisis": res_crisis
+    }
+    
+    df_pred = pd.DataFrame(y_pred, index=test_dates_window, columns=NODES)
+    df_pred.to_csv(out_dir / f"predictions_k{lookback}.csv")
         
     with open(out_dir / f"metrics_k{lookback}.json", "w") as f:
         json.dump(full_res, f, indent=2)
@@ -189,20 +181,22 @@ def evaluate_and_save(model_name, y_true, y_pred, test_dates_window, lookback):
     return full_res
 
 
-def run_training_ablation(lookback: int, ablation: str):
+def run_training_ablation(lookback: int, ablation: str, horizon: int):
     print("=" * 60)
-    print(f"Training GeoRipNet [{ablation}] | lookback={lookback} | device={DEVICE}")
+    print(f"Training GeoRipNet [{ablation}] | lookback={lookback} | horizon={horizon} | device={DEVICE}")
     print("=" * 60)
 
-    tr_ds  = OilDataset(TRAIN_DIR, lookback)
-    val_ds = OilDataset(VAL_DIR, lookback, price_mean=tr_ds.price_mean, price_std=tr_ds.price_std)
-    te_ds  = OilDataset(TEST_DIR, lookback, price_mean=tr_ds.price_mean, price_std=tr_ds.price_std)
+    # Train overlapping (stride 1)
+    tr_ds  = OilDataset(TRAIN_DIR, lookback, horizon=horizon, stride=1)
+    val_ds = OilDataset(VAL_DIR, lookback, price_mean=tr_ds.price_mean, price_std=tr_ds.price_std, horizon=horizon, stride=1)
+    # Test strided (non-overlapping)
+    te_ds  = OilDataset(TEST_DIR, lookback, price_mean=tr_ds.price_mean, price_std=tr_ds.price_std, horizon=horizon, stride=horizon)
 
     tr_dl  = DataLoader(tr_ds,  batch_size=BATCH_SIZE, shuffle=True,  num_workers=0)
     val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
     te_dl  = DataLoader(te_ds,  batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-    model = GeoRipNet(lookback=lookback, ablation=ablation).to(DEVICE)
+    model = GeoRipNet(lookback=lookback, ablation=ablation, horizon=horizon).to(DEVICE)
     opt  = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     sch  = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, patience=10, factor=0.5)
     mse_crit = nn.MSELoss()
@@ -281,37 +275,42 @@ def run_training_ablation(lookback: int, ablation: str):
             log_ret_hat, _ = model(X, gdelt_batch, adj)
             log_ret_preds.append(log_ret_hat.cpu().numpy())
 
-    log_ret_preds = np.vstack(log_ret_preds)   # [N_test, 4, 5]  normalised Δ
-
-    # Reconstruct real prices: P_hat_norm = last_norm + Δ_pred → denormalise
+    # Flatten the independent sequence chunks to form a cohesive timeline
+    log_ret_preds = np.vstack(log_ret_preds)   # [N_chunks, horizon, 5]
+    log_ret_flat  = log_ret_preds.reshape(-1, N_NODES) # [N_total_steps, 5]
+    
+    # Reconstruct real prices: P_hat_norm = P_t + Δ_pred → denormalise
     preds_norm  = np.expand_dims(te_ds.last_norm, 1) + log_ret_preds
-    preds_real  = preds_norm * tr_ds.price_std + tr_ds.price_mean   # [N_test, 4, 5]
-    y_true_real = te_ds.y_raw                                        # [N_test, 4, 5]
+    preds_flat  = (preds_norm * tr_ds.price_std + tr_ds.price_mean).reshape(-1, N_NODES)
+    
+    y_true_real = te_ds.y_raw                                      
+    y_true_flat = y_true_real.reshape(-1, N_NODES)
 
-    # Directional accuracy on test set (from normalised Δ sign)
-    y_true_ret = te_ds.y_returns
-    da_per_node = (np.sign(log_ret_preds) == np.sign(y_true_ret)).mean(axis=(0, 1))
-    print(f"  Directional Accuracy per node (avg over horizons): " +
+    y_true_ret = te_ds.y_returns.reshape(-1, N_NODES)
+    da_per_node = (np.sign(log_ret_flat) == np.sign(y_true_ret)).mean(axis=0)
+    print(f"  Directional Accuracy per node: " +
           " | ".join(f"{n}={100*da:.1f}%" for n, da in zip(NODES, da_per_node)))
 
+    flat_dates = np.concatenate(te_ds.target_dates_seq)
+    flat_dates_idx = pd.DatetimeIndex(flat_dates)
+
     res = evaluate_and_save(
-        f"GeoRipNet_{ablation}", y_true_real, preds_real,
-        te_ds.target_dates, lookback
+        f"GeoRipNet_{ablation}_h{horizon}", y_true_flat, preds_flat,
+        flat_dates_idx, lookback
     )
-    from config import HORIZONS
-    print("\nTest Metrics (price space):")
-    for h in HORIZONS:
-        print(f"  --- Horizon {h} days ---")
-        for n in NODES:
-            print(f"    {n:8s} | RMSE={res[f'h{h}']['overall']['RMSE'][n]:.3f} | R²={res[f'h{h}']['overall']['R2'][n]:.4f} | DA={res[f'h{h}']['overall']['DA'][n]:.1f}%")
-        print(f"    {'MEAN':8s} | RMSE={res[f'h{h}']['overall']['RMSE_mean']:.3f} | R²={res[f'h{h}']['overall']['R2_mean']:.4f} | DA={res[f'h{h}']['overall']['DA_mean']:.1f}%")
+    
+    print(f"\nTest Metrics (price space) for Horizon={horizon}:")
+    for n in NODES:
+        print(f"    {n:8s} | RMSE={res['overall']['RMSE'][n]:.3f} | R²={res['overall']['R2'][n]:.4f} | DA={res['overall']['DA'][n]:.1f}%")
+    print(f"    {'MEAN':8s} | RMSE={res['overall']['RMSE_mean']:.3f} | R²={res['overall']['R2_mean']:.4f} | DA={res['overall']['DA_mean']:.1f}%")
     return res
 
 
 def run_all(lookback: int):
     # Standard complete run
-    for ab in ["A1", "A2", "A3", "A4", "A5"]:
-        run_training_ablation(lookback, ab)
+    from config import HORIZONS
+    for h in HORIZONS:
+        run_training_ablation(lookback, "A5", h)
 
 
 if __name__ == "__main__":

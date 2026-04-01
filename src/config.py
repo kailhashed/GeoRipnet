@@ -73,7 +73,7 @@ BATCH_SIZE      = 64
 LR              = 1e-3
 WEIGHT_DECAY    = 1e-5
 EPOCHS          = 200
-PATIENCE        = 30        # more patience for harder horizons
+PATIENCE        = 10        # early stopping patience
 
 # ── Device ────────────────────────────────────────────────────────────────────
 def get_device():

@@ -63,7 +63,7 @@ def save(fig, name, synthetic=False):
 # 1.  DATA LOADING / INFERENCE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def run_real_inference():
+def run_real_inference(horizon_val):
     """Load model and run on test set. Returns (dates, actuals, preds, gate_vals).
     Actuals and preds are returned in original USD/bbl scale (denormalized)."""
     import torch
@@ -72,10 +72,14 @@ def run_real_inference():
     from train import OilDataset
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[REAL MODE] Device: {device}")
+    print(f"[REAL MODE] Horizon: {horizon_val} | Device: {device}")
 
     # Load checkpoint first to get normalization stats
-    ckpt  = torch.load(CKPT_PATH, map_location=device, weights_only=False)
+    ckpt_path = CHECKPOINT_DIR / f"georipnet_A5_k{LOOKBACK_WINDOW}_h{horizon_val}_best.pt"
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
+
+    ckpt  = torch.load(ckpt_path, map_location=device, weights_only=False)
     lookback = ckpt.get("lookback", LOOKBACK_WINDOW)
 
     # Get normalization stats from checkpoint (saved during training)
@@ -85,16 +89,14 @@ def run_real_inference():
 
     # Load test data using the split-based OilDataset
     test_ds = OilDataset(TEST_DIR, lookback=lookback,
-                         price_mean=price_mean, price_std=price_std)
+                         price_mean=price_mean, price_std=price_std, horizon=horizon_val, stride=horizon_val)
     test_dl = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=0)
 
     # Extract dates for valid test samples (after lookback window)
-    dates = pd.to_datetime(test_ds.target_dates[
-        [test_ds.valid_indices[i] for i in range(len(test_ds))]
-    ])
-    print(f"  Test samples: {len(test_ds)} | Date range: {dates[0].date()} → {dates[-1].date()}")
+    dates = pd.DatetimeIndex(np.concatenate(test_ds.target_dates_seq))
+    print(f"  Test samples: {len(dates)} | Date range: {dates[0].date()} → {dates[-1].date()}")
 
-    model = GeoRipNet(lookback=lookback).to(device)
+    model = GeoRipNet(lookback=lookback, horizon=horizon_val).to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
@@ -107,39 +109,41 @@ def run_real_inference():
             gdelt_t = gdelt.to(device)
             adj_t   = adj.to(device)
 
-            pred, _ = model(prices, gdelt_t, adj_t)          # [B, 5] log returns
+            pred, _ = model(prices, gdelt_t, adj_t)          # [B, h, 5] log returns
             _, gate_seq = model.edge_gating(gdelt_t, adj_t)
             gate = gate_seq[:, -1, :, :]                     # [B, 5, 5]
 
             all_preds.append(pred.cpu().numpy())
             all_gates.append(gate.cpu().numpy())
 
-    log_ret_preds = np.concatenate(all_preds,  axis=0)   # [T, len(H), 5] (normalized log returns)
+    log_ret_preds = np.concatenate(all_preds,  axis=0)   # [N_chunks, h, 5] (normalized log returns)
+    log_ret_flat  = log_ret_preds.reshape(-1, N_NODES) # [N_total, 5]
+
     gates  = np.concatenate(all_gates,  axis=0)          # [T, 5, 5]
+    gates_repeated = np.repeat(gates, horizon_val, axis=0)
 
     # Reconstruct real absolute prices
     preds_norm = np.expand_dims(test_ds.last_norm, 1) + log_ret_preds
-    preds  = preds_norm * price_std + price_mean
-    actual = test_ds.y_raw
+    preds_flat  = (preds_norm * price_std + price_mean).reshape(-1, N_NODES)
+    actual_flat = test_ds.y_raw.reshape(-1, N_NODES)
 
-    return dates, actual, preds, gates
+    return dates, actual_flat, preds_flat, gates_repeated
 
 
-def make_synthetic_data():
+def make_synthetic_data(horizon_val):
     """Generate plausible synthetic predictions for layout/testing."""
     print("[SYNTHETIC MODE] No checkpoint found — generating synthetic data.")
 
-    from config import HORIZONS
     rng   = np.random.default_rng(42)
     n_days = 500
     dates  = pd.date_range(TEST_START, periods=n_days, freq="B")
 
     base_prices = np.array([90.0, 92.0, 88.0, 85.0, 87.0])
 
-    shocks  = rng.normal(0, 1.2, (n_days, len(HORIZONS), N_NODES))
-    actual  = np.expand_dims(base_prices, (0, 1)) + np.cumsum(shocks, axis=0)
+    shocks  = rng.normal(0, 1.2, (n_days, N_NODES))
+    actual  = base_prices + np.cumsum(shocks, axis=0)
 
-    noise   = rng.normal(0, 2.5, (n_days, len(HORIZONS), N_NODES))
+    noise   = rng.normal(0, 2.5, (n_days, N_NODES))
     preds   = actual + noise
 
     gates   = rng.uniform(0.3, 0.6, (n_days, N_NODES, N_NODES))
@@ -625,32 +629,19 @@ def main():
     print("=" * 50)
 
     # ── Decide mode ───────────────────────────────────────────────────────────
-    synthetic = not CKPT_PATH.exists()
-    mode_str  = "SYNTHETIC (no checkpoint)" if synthetic else "REAL (checkpoint loaded)"
-    print(f"Mode: {mode_str}")
-    
-    # ── Get data ──────────────────────────────────────────────────────────────
-    if synthetic:
-        dates, actual_all, preds_all, gates = make_synthetic_data()
-    else:
-        try:
-            dates, actual_all, preds_all, gates = run_real_inference()
-        except Exception as e:
-            print(f"  [WARNING] Real inference failed ({e}). Falling back to synthetic.")
-            synthetic = True
-            dates, actual_all, preds_all, gates = make_synthetic_data()
-
     from config import HORIZONS
-    print(f"Test samples: {len(dates)} days  "
-          f"({dates[0].date()} → {dates[-1].date()})")
-
-    for h_idx, h in enumerate(HORIZONS):
+    for h in HORIZONS:
         print(f"\n{'='*56}")
         print(f"  HORIZON: {h} DAYS")
         print(f"{'='*56}")
         
-        actual = actual_all[:, h_idx, :]
-        preds = preds_all[:, h_idx, :]
+        try:
+            dates, actual, preds, gates = run_real_inference(h)
+            synthetic = False
+        except Exception as e:
+            print(f"  [WARNING] Real inference failed ({e}). Synthetic mode.")
+            dates, actual, preds, gates = make_synthetic_data(h)
+            synthetic = True
         
         metrics = compute_metrics(actual, preds)
         print_metrics(metrics)

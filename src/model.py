@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from config import N_NODES, N_CHANNELS, D_MODEL, N_HEADS_GAT, N_TRANSFORMER_LAYERS, DROPOUT, HORIZONS
+from config import N_NODES, N_CHANNELS, D_MODEL, N_HEADS_GAT, N_TRANSFORMER_LAYERS, DROPOUT
 
 class GeopoliticalEdgeGating(nn.Module):
     def __init__(self, ablation="A5"):
@@ -149,11 +149,13 @@ class GeoRipNet(nn.Module):
         n_transformer_layers: int = N_TRANSFORMER_LAYERS,
         dropout: float = DROPOUT,
         lookback: int = 20,
-        ablation: str = "A5"
+        ablation: str = "A5",
+        horizon: int = 1
     ):
         super().__init__()
         self.lookback = lookback
         self.ablation = ablation
+        self.horizon = horizon
 
         self.edge_gating = GeopoliticalEdgeGating(ablation=ablation)
 
@@ -186,14 +188,14 @@ class GeoRipNet(nn.Module):
             nn.Linear(d_model, 256),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(256, N_NODES * len(HORIZONS)),
+            nn.Linear(256, N_NODES * self.horizon),
         )
         # Head 2: direction classification (logit for P_{t+h} > P_t)
         self.dir_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, 64),
             nn.ReLU(),
-            nn.Linear(64, N_NODES * len(HORIZONS)),
+            nn.Linear(64, N_NODES * self.horizon),
         )
 
     def forward(
@@ -222,11 +224,11 @@ class GeoRipNet(nn.Module):
 
         z = self.temporal(seq, gate_seq)   # [B, d]
 
-        log_return = self.price_head(z)    # [B, N_NODES * len(HORIZONS)] 
-        dir_logit  = self.dir_head(z)      # [B, N_NODES * len(HORIZONS)] 
+        log_return = self.price_head(z)    # [B, N_NODES * self.horizon] 
+        dir_logit  = self.dir_head(z)      # [B, N_NODES * self.horizon] 
         
-        # Reshape to [B, len(HORIZONS), N_NODES]
-        log_return = log_return.view(B, len(HORIZONS), N_NODES)
-        dir_logit  = dir_logit.view(B, len(HORIZONS), N_NODES)
+        # Reshape to [B, self.horizon, N_NODES]
+        log_return = log_return.view(B, self.horizon, N_NODES)
+        dir_logit  = dir_logit.view(B, self.horizon, N_NODES)
         
         return log_return, dir_logit
